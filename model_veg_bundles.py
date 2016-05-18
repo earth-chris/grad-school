@@ -21,7 +21,7 @@ s = SixS()
 output_file = 'tropical_atmosphere_landsat8_veg_bundles.csv'
 
 # set number of random iterations to produce
-n_iterations = 10
+n_iterations = 20
 
 #####
 # set up the spectral output parameters
@@ -49,15 +49,18 @@ output_type = 'apparent_reflectance'
 
 # select the atmospheric profile (an option from AtmosProfile)
 #  examples include Tropical, MidlatitudeSummer, MidlatitudeWinter, etc.
-atmos_profile = AtmosProfile.Tropical
+atmos_profile = [AtmosProfile.Tropical]
+atmos_profile_ind = np.random.random_integers(0,len(atmos_profile)-1,n_iterations)
 
 # select the aerosol profile to use (an option from AeroProfile)
 #  examples include BiomassBurning, Continental, Desert, Maritime, NoAerosols, Urban, etc.
-aero_profile = AeroProfile.Continental
+aero_profile = [AeroProfile.Continental, AeroProfile.BiomassBurning]
+aero_profile_ind = np.random.random_integers(0,len(aero_profile)-1,n_iterations)
 
 # select ground reflectance method (an option from GroundReflectance)
 #  examples include GreenVegetation, Hetero(/Homo)geneousLambertian, HotSpot, LeafDistPlanophile, etc
-ground_reflectance = GroundReflectance.HomogeneousLambertian
+ground_reflectance = [GroundReflectance.HomogeneousLambertian]
+ground_reflectance_ind = np.random.random_integers(0,len(ground_reflectance)-1,n_iterations)
 
 # set altitudes for sensor (ground) and target (target altitude for modeled reflectance)
 #  Landsat 4, 5, 7, 8 altitude - 705 km 
@@ -65,16 +68,23 @@ altitudes = Altitudes()
 #altitudes.set_sensor_custom_altitude(705)
 altitudes.set_sensor_satellite_level()
 altitudes.set_target_sea_level()
+s.altitudes = altitudes
+
+def randomFloats(n_iterations, minval, maxval):
+    return np.random.ranf(n_iterations) * (maxval - minval) + minval
 
 # set aerosol optical thickness (550 nm)
-aot = 0.5
+aot = randomFloats(n_iterations, 0.3, 0.7)
 
 # select viewing geometry parameters
 geo = Geometry.User()
-geo.solar_a = 0
-geo.solar_z = 30
-geo.view_a = 0
-geo.view_z = 10
+solar_a = randomFloats(n_iterations, 0, 359) 
+solar_z = randomFloats(n_iterations, 10, 45)
+view_a = randomFloats(n_iterations, 0, 5) - 2.5
+view_z = randomFloats(n_iterations, 0, 1)
+
+# convert view azimuth to 0-360 scale
+view_a[(view_a < 0)] = view_a[(view_a < 0)] + 360
 
 #####
 # set up the leaf and canopy modeling parameters
@@ -82,29 +92,29 @@ geo.view_z = 10
 
 # structural coefficient (arbitrary units)
 #  range 1.3 - 2.5 from Rivera et al. 2013 http://dx.doi.org/10.3390/rs5073280
-N = 1.5
+N = randomFloats(n_iterations, 1.3, 2.5)
 
 # total chlorophyll content (ug/cm^2)
 #  range ~ 5 - 75 from Rivera et al. 2013
-chloro = 40
+chloro = randomFloats(n_iterations, 10, 60)
 
 # total carotenoid content (ug/cm^2)
-caroten = 8
+caroten = randomFloats(n_iterations, 8, 8)
 
 # brown pigment content (arbitrary units)
-brown = 0
+brown = randomFloats(n_iterations, 0, 0)
 
 # equivalent water thickness (cm)
 #  range 0.002 - 0.05 from Rivera et al. 2013
-EWT = 0.01
+EWT = randomFloats(n_iterations, 0.002, 0.05)
 
 # leaf mass per area (g/cm^2)
 #  global range 0.0022 - 0.0365 (median 0.01)
 #  from Asner et al. 2011 http://dx.doi.org/10.1016/j.rse.2011.08.020
-LMA = 0.01
+LMA = randomFloats(n_iterations, 0.005, 0.03)
 
 # soil reflectance metric (wet soil = 0, dry soil = 1)
-soil_reflectance = 1
+soil_reflectance = randomFloats(n_iterations, 0, 1)
 
 # leaf area index (unitless, cm^2 leaf area/cm^2 ground area)
 #  range 0.01 - 18.0 (5.5 mean) globally
@@ -121,27 +131,24 @@ soil_reflectance = 1
 #  range 0.2 - 5.3 (1.9 mean) for tundra
 #  range 2.5 - 8.4 (6.3 mean) for wetlands
 #  from Asner, Scurlock and Hicke 2003 http://dx.doi.org/10.1046/j.1466-822X.2003.00026.x
-LAI = 3
+LAI = randomFloats(n_iterations, 0.6, 8.0)
 
 # hot spot parameter (derived from brdf model)
 #  range 0.05-0.5 from Rivera et al. 2013
-hot_spot = 0.01
+hot_spot = randomFloats(n_iterations, 0.05, 0.5)
 
-# solar zenith angle (degrees)
-solar_zenith = geo.solar_z
+# leaf distribution function parameter.
+#  range LAD_inc -0.4 -  0.4, LAD_bim -0.1 - 0.2 for trees
+#  range LAD_inc -0.1 -  0.3, LAD_bim  0.3 - 0.5 for lianas
+#  range LAD_inc -0.8 - -0.2, LAD_bim -0.1 - 0.3 for Palms
+#  from Asner et al. 2011
+LAD_inclination = randomFloats(n_iterations, 0., 0.8) - 0.4
+LAD_bimodality = randomFloats(n_iterations, 0., 0.3) - 0.1
 
-# solar_azmiuth angle (degrees)
-solar_azimuth = geo.solar_a
-
-# view zenith angle (degrees)
-view_zenith = geo.view_z
-
-# view azimuth angle (degrees)
-view_azimuth = geo.view_a
-
-# leaf distribution function parameter. options include:
+# old leaf inclination parameters based on fixed canopy architecture. options include:
 # Planophile, Erectophile, Plagiophile, Extremophile, Spherical, Uniform
-LIDF = pyprosail.Planophile
+# LIDF = [pyprosail.Planophile, pyprosail.Uniform]
+# LIDF_ind = np.random.random_integers(0,len(LIDF)-1,n_iterations)
 
 #####
 # set up if statements to set parameters based on sesnsor type
@@ -216,40 +223,55 @@ else:
     raise OSError('Unsupported sensor configuration')
 
 #####
-# load prosail and run the canopy model
+# set up the loop for each canopy model
 #####
 
-spectrum = pyprosail.run(N, chloro, caroten, brown, EWT, LMA, soil_reflectance,
-			            LAI, hot_spot, solar_zenith, solar_azimuth,
-			            view_zenith, view_azimuth, LIDF)
+# first create the output array that will contain all the resulting spectra
+nb = len(good_bands)
+output_array = np.zeros([nb, n_iterations+1])
 
-# set the ground reflectance component to the canopy model
-s.ground_reflectance = ground_reflectance(spectrum)
+for i in range(n_iterations):
+    # set the sixs atmosphere profiles for each iteration
+    s.aero_profile = AeroProfile.PredefinedType(aero_profile[aero_profile_ind[i]])
+    s.atmos_profile = AtmosProfile.PredefinedType(atmos_profile[atmos_profile_ind[i]])
+    s.aot550 = aot[i]
+    geo.solar_a = solar_a[i]
+    geo.solar_z = solar_z[i]
+    geo.view_a = view_a[i]
+    geo.view_z = view_z[i]
+    s.geometry = geo
+    ground_refl = ground_reflectance[ground_reflectance_ind[i]]
+    
+    # set prosail parameters
+    LIDF = (LAD_inclination[i], LAD_bimodality[i])
+    
+    # load prosail and run the canopy model
+    spectrum = pyprosail.run(N[i], chloro[i], caroten[i], brown[i], EWT[i], 
+                            LMA[i], soil_reflectance[i], LAI[i],
+                            hot_spot[i], solar_z[i], solar_a[i],
+                            view_z[i], view_a[i], LIDF)
+                            
+    s.ground_reflectance = ground_refl(spectrum)
+    
+    # generate the output spectrum using specified wavelengths
+    if target_sensor == 'custom':
+        wavelengths, results = run_sixs_params(s, wl, output_name = output_type)
+    else:
+        wavelengths, results = run_sixs_params(s, output_name = output_type)
+    
+    #convert output to array for ease of output
+    wavelengths = np.asarray(wavelengths)
+    results = np.asarray(results)
+    
+    # plot the result
+    #SixSHelpers.Wavelengths.plot_wavelengths(wavelengths[good_bands], results[good_bands], output_type)
+    
+    # add the modeled spectra to the output array
+    output_array[0:nb,i+1] = results[good_bands]
 
 #####
-# update the sixs parameters for running
+# now that the loop has finished we can export our results to a csv file
 #####
 
-# update aerosol, altitude, aot, atmosphere, geometry and wavelength info
-s.aero_profile = AeroProfile.PredefinedType(aero_profile)
-s.altitudes = altitudes
-s.aot550 = aot
-s.atmos_profile = AtmosProfile.PredefinedType(atmos_profile)
-s.geometry = geo
-
-#####
-# now that our parameters are set, run the model for each iteration
-#####
-
-# generate the output spectrum using specified wavelengths
-if target_sensor == 'custom':
-    wavelengths, results = run_sixs_params(s, wl, output_name = output_type)
-else:
-    wavelengths, results = run_sixs_params(s, output_name = output_type)
-
-#convert output to array for ease of output
-wavelengths = np.asarray(wavelengths)
-results = np.asarray(results)
-
-# plot the result
-SixSHelpers.Wavelengths.plot_wavelengths(wavelengths[good_bands], results[good_bands], output_type)
+output_array[0:nb,0] = wavelengths[good_bands]
+np.savetxt(output_file, output_array.transpose(), delimiter=",")
