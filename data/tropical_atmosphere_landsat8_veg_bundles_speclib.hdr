@@ -1,0 +1,13 @@
+ENVI
+samples = 6
+lines = 500
+bands = 1
+header offset = 0
+file type = ENVI Spectral Library
+data type = 5
+interleave = bsq
+sensor type = landsat_oli
+byte order = 0
+wavelength = { 0.481 , 0.561 , 0.6575 , 0.864 , 1.605 , 2.1955 }
+wavelength units = micrometers
+spectra names = { Veg. bundle 1 , Veg. bundle 2 , Veg. bundle 3 , Veg. bundle 4 , Veg. bundle 5 , Veg. bundle 6 , Veg. bundle 7 , Veg. bundle 8 , Veg. bundle 9 , Veg. bundle 10 , Veg. bundle 11 , Veg. bundle 12 , Veg. bundle 13 , Veg. bundle 14 , Veg. bundle 15 , Veg. bundle 16 , Veg. bundle 17 , Veg. bundle 18 , Veg. bundle 19 , Veg. bundle 20 , Veg. bundle 21 , Veg. bundle 22 , Veg. bundle 23 , Veg. bundle 24 , Veg. bundle 25 , Veg. bundle 26 , Veg. bundle 27 , Veg. bundle 28 , Veg. bundle 29 , Veg. bundle 30 , Veg. bundle 31 , Veg. bundle 32 , Veg. bundle 33 , Veg. bundle 34 , Veg. bundle 35 , Veg. bundle 36 , Veg. bundle 37 , Veg. bundle 38 , Veg. bundle 39 , Veg. bundle 40 , Veg. bundle 41 , Veg. bundle 42 , Veg. bundle 43 , Veg. bundle 44 , Veg. bundle 45 , Veg. bundle 46 , Veg. bundle 47 , Veg. bundle 48 , Veg. bundle 49 , Veg. bundle 50 , Veg. bundle 51 , Veg. bundle 52 , Veg. bundle 53 , Veg. bundle 54 , Veg. bundle 55 , Veg. bundle 56 , Veg. bundle 57 , Veg. bundle 58 , Veg. bundle 59 , Veg. bundle 60 , Veg. bundle 61 , Veg. bundle 62 , Veg. bundle 63 , Veg. bundle 64 , Veg. bundle 65 , Veg. bundle 66 , Veg. bundle 67 , Veg. bundle 68 , Veg. bundle 69 , Veg. bundle 70 , Veg. bundle 71 , Veg. bundle 72 , Veg. bundle 73 , Veg. bundle 74 , Veg. bundle 75 , Veg. bundle 76 , Veg. bundle 77 , Veg. bundle 78 , Veg. bundle 79 , Veg. bundle 80 , Veg. bundle 81 , Veg. bundle 82 , Veg. bundle 83 , Veg. bundle 84 , Veg. bundle 85 , Veg. bundle 86 , Veg. bundle 87 , Veg. bundle 88 , Veg. bundle 89 , Veg. bundle 90 , Veg. bundle 91 , Veg. bundle 92 , Veg. bundle 93 , Veg. bundle 94 , Veg. bundle 95 , Veg. bundle 96 , Veg. bundle 97 , Veg. bundle 98 , Veg. bundle 99 , Veg. bundle 100 }
