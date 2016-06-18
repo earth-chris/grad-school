@@ -1,5 +1,13 @@
 #####
-# unmix_spectra.py performs spectral ummixing on an image file
+# unmix_spectra.py performs fully-constrained least-squares 
+#  spectral ummixing on an image file
+#
+# unmixing implementation described here:
+#  http://pysptools.sourceforge.net/abundance_maps.html
+#
+# based on the algorithm desribed here:
+#  Daniel Heinz, Chein-I Chang, and Mark L.G. Fully Constrained 
+#  Least-Squares Based Linear Unmixing. Althouse. IEEE. 1999.
 #
 # c. 2016 Christopher Anderson
 #####
@@ -7,13 +15,13 @@
 import os
 import sys
 import aei
+import random
 import gdal as gdal
 import numpy as np
 import pysptools.abundance_maps as abm
 
 # create a class to parse out the arguments passed to the main function
-class parse_args(arglist):
-    
+class parse_args:
     def __init__(self, arglist):
         
         # set up main variables and defaults to parse
@@ -41,9 +49,9 @@ class parse_args(arglist):
                 
                 if type(arg) is str:
                     self.infile = arg
-                    if not aei.checkFile(infile, quiet = True):
+                    if not aei.checkFile(self.infile, quiet = True):
                         usage()
-                        aei.checkFile(infile)
+                        aei.checkFile(self.infile)
                         sys.exit(1)
             
             # check output flag
@@ -53,7 +61,7 @@ class parse_args(arglist):
                 
                 if type(arg) is str:
                     self.outfile = arg
-                    outpath = os.path.dirname(outfile)
+                    outpath = os.path.dirname(self.outfile)
                     if outpath == '':
                         outpath = '.'
                     if not os.access(outpath, os.W_OK):
@@ -65,7 +73,7 @@ class parse_args(arglist):
             if arg.lower() == "-lib":
                 i += 1
                 arg = arglist[i]
-                libs = arg.split(", ")
+                libs = arg.split(" ")
                 
                 # throw an error if only one lib specified
                 if len(libs) == 1:
@@ -98,7 +106,7 @@ class parse_args(arglist):
             if arg.lower() == "-bands":
                 i += 1
                 arg = arglist[i]
-                band = arg.split(", ")
+                band = arg.split(" ")
                 
                 # loop through and make sure each is a number
                 for j in range(len(band)):
@@ -110,7 +118,7 @@ class parse_args(arglist):
                         print("[ ERROR ]: invalid index set: %s" % ind[j])
                         sys.exit(1)
                     
-                    self.bands.append(band[j])
+                    self.bands.append(int(band[j]))
                     
             # check normalize flag
             if arg.lower() == "-normalize":
@@ -128,6 +136,8 @@ class parse_args(arglist):
                     sys.exit(1)
                     
                 self.of = arg
+            
+            i += 1
 
 def usage(exit=False):
     """
@@ -157,11 +167,23 @@ def main():
     
     # load the spectral libraries
     lib = {}
-    lnb = np.zeros(len(args.spectral_libs))
+    n_libs = len(args.spectral_libs)
+    lnb = np.zeros(n_libs)
     
-    for i in range(len(args.spectral_libs)):
-        lib['%s' % i] = aei.readSpeclib(args.spectral_libs)
-        lnb[i] = (lib['%s' % i].spectra.shape[-1])
+    # get info from each library
+    for i in range(n_libs):
+        
+        # assign libraries to dictionary
+        lib['lib_%s' % i] = aei.readSpecLib(args.spectral_libs[i])
+        lnb[i] = (lib['lib_%s' % i].spectra.shape[-1])
+        
+        # get random indices for each library
+        lib['rnd_%s' % i] = random.sample(range(
+            lib['lib_%s' % i].spectra.shape[0]), args.n)
+            
+        # normalize if set
+        if args.normalize:
+            lib['lib_%s' % i].bn(inds=args.bands)
     
     # load the input image and get parameters
     inf = gdal.Open(args.infile)
@@ -170,7 +192,7 @@ def main():
     nb = inf.RasterCount
     geo = inf.GetGeoTransform()
     prj = inf.GetProjection()
-    n_bundles = lnb.shape
+    n_bundles = lnb.shape[0]
     b1 = inf.GetRasterBand(1)
     
     # if bands were not set in command line, use all bands
@@ -191,6 +213,11 @@ def main():
         print("[ ERROR ]: number of image bands does not match number of spectral library bands")
         inf = None
         sys.exit(1)
+    
+    # report a little
+    print("[ STATUS ]: Beginning fully-constrained least-squares unmixing")
+    print("[ STATUS ]: Input file : %s" % args.infile)
+    print("[ STATUS ]: Output file: %s" % args.outfile)
         
     # create an output file
     ouf = gdal.GetDriverByName(args.of).Create(
@@ -199,23 +226,62 @@ def main():
     ouf.SetProjection(prj)
     
     # create an output array 
-    arr = np.empty((nl, ns, n_bundles))
+    arr = np.zeros((nl, ns, n_bundles))
     
     # read the image file and flip dimensions
     img = inf.ReadAsArray()
     img = img.transpose([1,2,0])
     
     # find no data vals
-    gd = np.where(img[:,:,0] != nd)[0]
+    gd = np.where(img[:,:,0] != nd)
+    
+    # check that the file is not all no-data
+    if gd[0].shape[0] == 0:
+        print("[ ERROR ]: No good-data found in input file")
+        print("[ ERROR ]: Exiting...")
+        sys.exit(1)
+    
+    # subset the image array to good data only
+    img = img[gd[0], gd[1], :]
+    
+    # normalize the data if set
+    if args.normalize:
+        img = aei.bn(img, inds = args.bands)
+        args.bands = range(len(args.bands))
+        
+    # add a shallow dimension for unmixing algorithm
+    img = np.expand_dims(img[:,args.bands], 0)
     
     # set up unmixing class
     unmixer = abm.FCLS()
     
-    # get random indices for each bundle
-    
     # loop through each random index and unmix
     for i in range(args.n):
         
+        print("[ STATUS ]: Iteration [%s] of [%s]" % ((i + 1), args.n))
+        
+        # set up the bundles 
+        bundles = np.zeros((n_libs,len(args.bands)))
+        for j in range(n_libs):
+            bundles[j,:] = lib['lib_%s' % j].spectra[lib['rnd_%s' % j][i],args.bands]
+            
+        # perform the unmixing
+        arr[gd[0],gd[1],:] += unmixer.map(img, bundles).squeeze()
+        
+    # divide by n iterations to get average response
+    arr /= args.n
+    
+    # report completion
+    print("[ STATUS ]: Completed unmixing iterations")
+    print("[ STATUS ]: Writing data to file")
+    
+    # and write the results to the output file
+    for i in range(n_libs):
+        
+        band = ouf.GetRasterBand(i+1)
+        band.WriteArray(arr[:,:,i])
+        band.SetNoDataValue(0.0)
+        band.FlushCache()
                 
 if __name__ == "__main__":
     main()
