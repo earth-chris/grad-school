@@ -8,6 +8,7 @@
 ehthumbs.db
 Thumbs.db
 .~lock.
+.~*
 
 # program specific files
 ######################
@@ -18,3 +19,16 @@ Thumbs.db
 *.pyo
 *.pyc
 *~
+
+# GIS / RS data
+######################
+*.tif*
+*.shp*
+*.dbf
+*.shx
+*.prj
+*.cpg
+
+# scratch files
+######################
+scratch/*

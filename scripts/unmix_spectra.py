@@ -161,7 +161,6 @@ def main():
     
     syntax: main()
     """
-    
     # parse the argument list
     args = parse_args(sys.argv)
     
