@@ -4,7 +4,7 @@
 #####
 
 # set up the mirror site
-mirror <- "https://cran.cnr.berkeley.edu/"
+mirror <- "http://cran.us.r-project.org"
 
 # set up the library path
 library <- "/home/cba/Downloads/source/R/"
