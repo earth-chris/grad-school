@@ -1,3 +1,4 @@
+#/usr/bin/python!
 #####
 # unmix_spectra.py performs fully-constrained least-squares 
 #  spectral ummixing on an image file
@@ -49,9 +50,9 @@ class parse_args:
                 
                 if type(arg) is str:
                     self.infile = arg
-                    if not aei.checkFile(self.infile, quiet = True):
+                    if not aei.fn.checkFile(self.infile, quiet = True):
                         usage()
-                        aei.checkFile(self.infile)
+                        aei.fn.checkFile(self.infile)
                         sys.exit(1)
             
             # check output flag
@@ -83,9 +84,9 @@ class parse_args:
                 
                 # loop through each lib and update spec_lib list
                 for j in range(len(libs)):
-                    if not aei.checkFile(libs[j], quiet=True):
+                    if not aei.fn.checkFile(libs[j], quiet=True):
                         usage()
-                        aei.checkFile(libs[j])
+                        aei.fn.checkFile(libs[j])
                         sys.exit()
                         
                     self.spectral_libs.append(libs[j])
@@ -173,7 +174,7 @@ def main():
     for i in range(n_libs):
         
         # assign libraries to dictionary
-        lib['lib_%s' % i] = aei.readSpecLib(args.spectral_libs[i])
+        lib['lib_%s' % i] = aei.read.spectralLib(args.spectral_libs[i])
         lnb[i] = (lib['lib_%s' % i].spectra.shape[-1])
         
         # get random indices for each library
@@ -245,7 +246,7 @@ def main():
     
     # normalize the data if set
     if args.normalize:
-        img = aei.bn(img, inds = args.bands)
+        img = aei.fn.bn(img, inds = args.bands)
         args.bands = range(len(args.bands))
         
     # add a shallow dimension for unmixing algorithm

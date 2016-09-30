@@ -10,7 +10,7 @@ import numpy as np
 import pyprosail
 import aei as aei
 import random
-import spectral
+import spectral as spectral
 from Py6S import *
 
 # load sixs
@@ -23,12 +23,12 @@ s = SixS()
 # set output file base name (will have _speclib.csv, _speclib.sli, 
 #  _speclib.hdr, and _atm_x.sixs appended for the csv, spectral library, 
 #  and sixs outputs with x as the atmospheric iteration)
-output_base = aei.environ['AEI_GS'] + '/data/tropical_atmosphere_landsat8_veg_bundles'
+output_base = aei.params.environ['AEI_GS'] + '/data/spectral_libraries/sr_landsat8_veg_bundles'
 
 # set number of random atmospheres to simulate
-n_atmospheres = 5
+n_atmospheres = 1
 
-# set number of random veg, woody and soil bundles to simulate
+# set number of random veg, bundles to simulate
 n_bundles = 100
 
 #####
@@ -49,7 +49,7 @@ wl_sixs = Wavelength(wl_start, wl_end)
 
 # set up output type (an option from s.outputs)
 #  examples include pixel_radiance, pixel_reflectance, apparent_radiance, apparent_reflectance, etc.
-output_type = 'apparent_reflectance'
+output_type = 'pixel_reflectance'
 
 #####
 # set up atmospheric modeling parameters
@@ -62,7 +62,7 @@ atmos_profile_ind = np.random.random_integers(0,len(atmos_profile)-1,n_atmospher
 
 # select the aerosol profile to use (an option from AeroProfile)
 #  examples include BiomassBurning, Continental, Desert, Maritime, NoAerosols, Urban, etc.
-aero_profile = [AeroProfile.Continental, AeroProfile.BiomassBurning]
+aero_profile = [AeroProfile.Continental]
 aero_profile_ind = np.random.random_integers(0,len(aero_profile)-1,n_atmospheres)
 
 # select ground reflectance method (an option from GroundReflectance)
@@ -79,14 +79,25 @@ altitudes.set_target_sea_level()
 s.altitudes = altitudes
 
 # set aerosol optical thickness (550 nm)
-aot = aei.randomFloats(n_atmospheres, 0.3, 0.7)
+aot = aei.fn.randomFloats(n_atmospheres, 0.3, 0.7)
 
 # select viewing geometry parameters
 geo = Geometry.User()
-solar_a = aei.randomFloats(n_atmospheres, 0, 359) 
-solar_z = aei.randomFloats(n_atmospheres, 10, 45)
-view_a = aei.randomFloats(n_atmospheres, 0, 5) - 2.5
-view_z = aei.randomFloats(n_atmospheres, 0, 1)
+solar_a = aei.fn.randomFloats(n_atmospheres, 0, 0) 
+solar_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
+view_a = aei.fn.randomFloats(n_atmospheres, 0, 0)
+view_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
+#solar_a = aei.fn.randomFloats(n_atmospheres, 0, 359) 
+#solar_z = aei.fn.randomFloats(n_atmospheres, 10, 45)
+#view_a = aei.fn.randomFloats(n_atmospheres, 0, 5) - 2.5
+#view_z = aei.fn.randomFloats(n_atmospheres, 0, 1)
+
+# set view geometry to nadir for prosail, so the radiative transfer
+#  stuff is handled by sixs
+solar_a_prosail = 0
+solar_z_prosail = 0
+view_a_prosail = 0
+view_z_prosail = 0
 
 # convert view azimuth to 0-360 scale
 view_a[(view_a < 0)] = view_a[(view_a < 0)] + 360
@@ -97,29 +108,41 @@ view_a[(view_a < 0)] = view_a[(view_a < 0)] + 360
 
 # structural coefficient (arbitrary units)
 #  range 1.3 - 2.5 from Rivera et al. 2013 http://dx.doi.org/10.3390/rs5073280
-N = aei.randomFloats(n_bundles, 1.3, 2.5)
+#N = aei.fn.randomFloats(n_bundles, 1.3, 2.5)
+N = []
+for i in range(n_bundles):
+    N.append(random.gauss(1.9,0.3))
 
 # total chlorophyll content (ug/cm^2)
 #  range ~ 5 - 75 from Rivera et al. 2013
-chloro = aei.randomFloats(n_bundles, 10, 60)
+#chloro = aei.fn.randomFloats(n_bundles, 10, 60)
+chloro = []
+for i in range(n_bundles):
+    chloro.append(random.gauss(30, 15))
 
 # total carotenoid content (ug/cm^2)
-caroten = aei.randomFloats(n_bundles, 8, 8)
+caroten = aei.fn.randomFloats(n_bundles, 8, 8)
 
 # brown pigment content (arbitrary units)
-brown = aei.randomFloats(n_bundles, 0, 0)
+brown = aei.fn.randomFloats(n_bundles, 0, 0)
 
 # equivalent water thickness (cm)
 #  range 0.002 - 0.05 from Rivera et al. 2013
-EWT = aei.randomFloats(n_bundles, 0.002, 0.05)
+#EWT = aei.fn.randomFloats(n_bundles, 0.002, 0.05)
+EWT = []
+for i in range(n_bundles):
+    EWT.append(random.gauss(0.025, 0.01))
 
 # leaf mass per area (g/cm^2)
 #  global range 0.0022 - 0.0365 (median 0.01)
 #  from Asner et al. 2011 http://dx.doi.org/10.1016/j.rse.2011.08.020
-LMA = aei.randomFloats(n_bundles, 0.005, 0.03)
+#LMA = aei.fn.randomFloats(n_bundles, 0.005, 0.035)
+LMA = []
+for i in range(n_bundles):
+    LMA.append(random.gauss(0.012, 0.005))
 
 # soil reflectance metric (wet soil = 0, dry soil = 1)
-soil_reflectance = aei.randomFloats(n_bundles, 0, 1)
+soil_reflectance = aei.fn.randomFloats(n_bundles, 0, 0)
 
 # leaf area index (unitless, cm^2 leaf area/cm^2 ground area)
 #  range 0.01 - 18.0 (5.5 mean) globally
@@ -129,26 +152,37 @@ soil_reflectance = aei.randomFloats(n_bundles, 0, 1)
 #  range 0.5 - 8.5 (4.6 mean) for boreal needle forest
 #  range 0.8 - 11.6 (5.1 mean) for temperate broadleaf forest
 #  range 0.01 - 15.0 (5.5 mean) for temperate needle forest
-#  range 0.6 - 8.0 (4.8 mean) for tropical broadleaf forest
+#  range 0.6 - 8.9 (4.8 mean) for tropical broadleaf forest
 #  range 0.3 - 5.0 (1.7 mean) for grasslands
 #  range 1.6 - 18.0 (8.7 mean) for plantations
 #  range 0.4 - 4.5 (2.1 mean) for shrublands
 #  range 0.2 - 5.3 (1.9 mean) for tundra
 #  range 2.5 - 8.4 (6.3 mean) for wetlands
 #  from Asner, Scurlock and Hicke 2003 http://dx.doi.org/10.1046/j.1466-822X.2003.00026.x
-LAI = aei.randomFloats(n_bundles, 0.6, 8.0)
+#LAI = aei.fn.randomFloats(n_bundles, 0.6, 12.0)
+LAI = []
+for i in range(n_bundles):
+    LAI.append(random.gauss(5,2.5))
 
 # hot spot parameter (derived from brdf model)
 #  range 0.05-0.5 from Rivera et al. 2013
-hot_spot = aei.randomFloats(n_bundles, 0.05, 0.5)
+#hot_spot = aei.fn.randomFloats(n_bundles, 0.05, 0.5)
+hot_spot = []
+for i in range(n_bundles):
+    hot_spot.append(random.gauss(0.25, 0.1))
 
 # leaf distribution function parameter.
 #  range LAD_inc -0.4 -  0.4, LAD_bim -0.1 - 0.2 for trees
 #  range LAD_inc -0.1 -  0.3, LAD_bim  0.3 - 0.5 for lianas
 #  range LAD_inc -0.8 - -0.2, LAD_bim -0.1 - 0.3 for Palms
 #  from Asner et al. 2011
-LAD_inclination = aei.randomFloats(n_bundles, 0., 0.8) - 0.4
-LAD_bimodality = aei.randomFloats(n_bundles, 0., 0.3) - 0.1
+#LAD_inclination = aei.fn.randomFloats(n_bundles, 0., 0.8) - 0.4
+#LAD_bimodality = aei.fn.randomFloats(n_bundles, 0., 0.3) - 0.1
+LAD_inclination = []
+LAD_bimodality = []
+for i in range(n_bundles):
+    LAD_inclination.append(random.gauss(0, 0.2))
+    LAD_bimodality.append(random.gauss(0.05, 0.05))
 
 # old leaf inclination parameters based on fixed canopy architecture. options include:
 # Planophile, Erectophile, Plagiophile, Extremophile, Spherical, Uniform
@@ -275,9 +309,10 @@ for i in range(n_atmospheres):
         LIDF = (LAD_inclination[j], LAD_bimodality[j])
         spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
                     brown[j], EWT[j], LMA[j], soil_reflectance[j], 
-                    LAI[j], hot_spot[j], solar_z[i], solar_a[i],
-                    view_z[i], view_a[i], LIDF)
-                            
+                    LAI[j], hot_spot[j], solar_z_prosail, solar_a_prosail,
+                    view_z_prosail, view_a_prosail, LIDF)
+
+        # set the prosail modeled spectrum as ground spectrum in sixs                            
         s.ground_reflectance = ground_refl(spectrum)
     
         # generate the output spectrum
@@ -286,7 +321,7 @@ for i in range(n_atmospheres):
         else:
             wavelengths, results = run_sixs_params(s, output_name = output_type)
     
-        #convert output to array for ease of output
+        # convert output to array for ease of output
         results = np.asarray(results)
         
         # add the modeled spectrum to the output array
@@ -295,7 +330,8 @@ for i in range(n_atmospheres):
     # write the sixs parameters for this run to output file
     s.write_input_file(output_sixs[i])
     
-    # now that the loop has finished we can export our results to a csv file
+
+# now that the loop has finished we can export our results to a csv file
 wavelengths = np.asarray(wavelengths)
 output_array[:, 0] = wavelengths[good_bands]
 np.savetxt(output_csv[0], output_array.transpose(), delimiter=",")
@@ -317,4 +353,4 @@ metadata = {
     'wavelength units' : 'micrometers',
     'wavelength' : wavelengths[good_bands]
     }
-envi.write_envi_header(output_hdr[0], metadata, is_library=True)
+spectral.envi.write_envi_header(output_hdr[0], metadata, is_library=True)

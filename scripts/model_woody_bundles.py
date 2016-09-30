@@ -8,7 +8,7 @@
 import numpy as np
 import aei as aei
 import random
-import spectral
+import spectral as spectral
 from Py6S import *
 
 # load sixs
@@ -21,10 +21,10 @@ s = SixS()
 # set output file base name (will have _speclib.csv, _speclib.sli, 
 #  _speclib.hdr, and _atm_x.sixs appended for the csv, spectral library, 
 #  and sixs outputs with x as the atmospheric iteration)
-output_base = aei.environ['AEI_GS'] + '/data/tropical_atmosphere_landsat8_woody_bundles'
+output_base = aei.params.environ['AEI_GS'] + '/data/spectral_libraries/tropical_atmosphere_landsat5_woody_bundles'
 
 # set number of random atmospheres to simulate
-n_atmospheres = 5
+n_atmospheres = 1
 
 # set number of random woody and soil bundles to simulate
 n_bundles = 30
@@ -36,7 +36,7 @@ n_bundles = 30
 # specify the output sensor configuration for modeled spectra
 #  options include ali, aster, er2_mas, gli, landsat_etm, landsat_mss, landsat_oli,
 #  landsat_tm, meris, modis, polder, spot_hrv, spot_vgt, vnir, whole_range, and custom
-target_sensor = 'landsat_oli'
+target_sensor = 'landsat_tm'
 
 # set up output wavelengths (in um) if using custom wl range (ignored for pre-defined sensors)
 wl_start = 0.4
@@ -47,7 +47,7 @@ wl_sixs = Wavelength(wl_start, wl_end)
 
 # set up output type (an option from s.outputs)
 #  examples include pixel_radiance, pixel_reflectance, apparent_radiance, apparent_reflectance, etc.
-output_type = 'apparent_reflectance'
+output_type = 'pixel_reflectance'
 
 #####
 # set up atmospheric modeling parameters
@@ -60,7 +60,7 @@ atmos_profile_ind = np.random.random_integers(0,len(atmos_profile)-1,n_atmospher
 
 # select the aerosol profile to use (an option from AeroProfile)
 #  examples include BiomassBurning, Continental, Desert, Maritime, NoAerosols, Urban, etc.
-aero_profile = [AeroProfile.Continental, AeroProfile.BiomassBurning]
+aero_profile = [AeroProfile.Continental]
 aero_profile_ind = np.random.random_integers(0,len(aero_profile)-1,n_atmospheres)
 
 # select ground reflectance method (an option from GroundReflectance)
@@ -77,14 +77,14 @@ altitudes.set_target_sea_level()
 s.altitudes = altitudes
 
 # set aerosol optical thickness (550 nm)
-aot = aei.randomFloats(n_atmospheres, 0.3, 0.7)
+aot = aei.fn.randomFloats(n_atmospheres, 0.3, 0.7)
 
 # select viewing geometry parameters
 geo = Geometry.User()
-solar_a = aei.randomFloats(n_atmospheres, 0, 359) 
-solar_z = aei.randomFloats(n_atmospheres, 10, 45)
-view_a = aei.randomFloats(n_atmospheres, 0, 5) - 2.5
-view_z = aei.randomFloats(n_atmospheres, 0, 1)
+solar_a = aei.fn.randomFloats(n_atmospheres, 0, 0) 
+solar_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
+view_a = aei.fn.randomFloats(n_atmospheres, 0, 0)
+view_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
 
 # convert view azimuth to 0-360 scale
 view_a[(view_a < 0)] = view_a[(view_a < 0)] + 360
@@ -251,7 +251,8 @@ for i in range(n_atmospheres):
     for j in range(n_bundles):
         
         # read in the data
-        woody = aei.readJFSC(woody_spectra[j])
+        #woody = aei.readJFSC(woody_spectra[j])
+        woody = aei.read.jfsc(woody_files[j])
         
         # remove bad data
         woody.remove_water_bands()
@@ -301,4 +302,4 @@ metadata = {
     'wavelength units' : 'micrometers',
     'wavelength' : wavelengths[good_bands]
     }
-envi.write_envi_header(output_hdr[0], metadata, is_library=True)
+spectral.envi.write_envi_header(output_hdr[0], metadata, is_library=True)

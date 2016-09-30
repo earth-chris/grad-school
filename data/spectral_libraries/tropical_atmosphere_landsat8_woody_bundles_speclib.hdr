@@ -1,0 +1,13 @@
+ENVI
+samples = 6
+lines = 30
+bands = 1
+header offset = 0
+file type = ENVI Spectral Library
+data type = 5
+interleave = bsq
+sensor type = landsat_oli
+byte order = 0
+wavelength units = micrometers
+spectra names = { Woody bundle 001 , Woody bundle 002 , Woody bundle 003 , Woody bundle 004 , Woody bundle 005 , Woody bundle 006 , Woody bundle 007 , Woody bundle 008 , Woody bundle 009 , Woody bundle 010 , Woody bundle 011 , Woody bundle 012 , Woody bundle 013 , Woody bundle 014 , Woody bundle 015 , Woody bundle 016 , Woody bundle 017 , Woody bundle 018 , Woody bundle 019 , Woody bundle 020 , Woody bundle 021 , Woody bundle 022 , Woody bundle 023 , Woody bundle 024 , Woody bundle 025 , Woody bundle 026 , Woody bundle 027 , Woody bundle 028 , Woody bundle 029 , Woody bundle 030 }
+wavelength = { 0.481 , 0.561 , 0.6575 , 0.864 , 1.605 , 2.1955 }
