@@ -1,0 +1,32 @@
+ESS-211 10-3-16 notes
+
+-models are abstract representations of a system or process
+-ways to explore and add to our understanding of reality
+-a way to communicate expertise without being present
+-models are not reality, nor ar they a substitute for an experiment
+-can be useful for designing experiments but shouldn't substitute them
+-goals include: summarizing understanding by forcing abstractions; simulating virtual experiments; and making predictions; (et tu, above)
+-modeling is not a goal in itself - they serve the goals above, and more, but they must be, at least, useful
+-important in evn. sciences to manipulate measurements of models on widely varying temporal and spatial scales
+-many factors not easily controlled, so experiments can be impossible
+-many interacting system components (e.g. soil, precip, ecosystem, energy, etc.)
+-warnings: all models are wrong- some are useful (attr. george box); done love any one model; use many models to find the reality they intersect;
+-write up a checklist to review why you are building a model
+-general uses - exploratory (to explore the implications of hypotheses) and predictive (estimating future or unobserved values that require estimates or uncertainties to be useful) modeling.
+-building bad or toy models can be useful for exploration and for understanding data. not always useful for predictive modeling since your predictions will be meaningless
+-can use literature to help define equations/parameters.
+-does not have to be completely original
+-use of data you dont already have not advised
+-get early feedback to tune and tweak
+-can make nominations for papers to discuss, principally ones that focus on sensitivity analysis, calibration, etc.
+-definitions
+-system is a set of interrelated components and relationships between them
+-variable is a value that changes freely in space and time
+-constant is a value that does not change (e.g. gravity)
+-parameter is a value which is constant for a single case (e.g. model run) but may vary between cases.
+-scale refers to grain and extent of a mnodel
+-square root applied to variance to get stdev to return variance to the units we are interested in (since variance squares the residuals)
+-standard error = sqrt(variance/n)
+-random variables describe items that can have multiple, unknown values
+-probability distribution describes shape of variability for a random variable
+-
