@@ -97,14 +97,92 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     # set lambda
     lambda <- 2.501 - (0.002361 * meanTemp)
     
-    # run the full calculation
+    # run the PET calculation
     PET <- a * ((vSlope * (netRadiation - groundHeatFlux)) / 
       (lambda * (vpSlope + gamma)))
     PET
 }
 
 # method 2: modified priestly taylor
+modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+    # define constant 'albedo'
+    albedo <- 0.23
+    
+    # calculate constant TD
+    TD <- (0.6 * tMax) + (0.4 * tMin)
+    
+    # calculate EEQ
+    EEQ <- Rs * (4.88e-3 - (4.37e-3 * albedo)) * (TD + 29)
+    
+    # PET is calculated differently based on tMax
+    if (tMax < 5){
+       PET <- EEQ * 0.01 * exp(0.18 * (tMax + 20))
+    } elseif (tMax > 24){
+        EEQ * ((tMax -24) * 0.05 + 1.1)
+    } else {
+        PET <- EEQ * 1.1
+    }
+    EEQ
+}
 
+# method 3: hammon
+hammon <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+    # calculate the day length
+    dl <- daylength(lat, doy)
+    
+    # calculate the saturated vapor pressure
+    vpSat <- esat(tMax, tMin)
+    
+    # calculate the mean temperature
+    meanTemp <- tMean(tmin, tMax)
+    
+    # run the PET calculation
+    PET <- 715.5 * dl * (vpSat / (meanTemp + 273.2))
+    PET
+}
+
+# method 4: hargreaves
+hargreaves <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+    # calculate mean temperature
+    meanTemp <- tMean(tMin, tMax)
+    
+    # calculate lambda
+    lambda <- 2.501 - (0.002361 * meanTemp)
+    
+    # calculate atmospheric net radiation
+    atmRad <- Ra(doy, lat)
+    
+    # run the PET calculation
+    PET <- (0.0023 * (meanTemp + 17.8) * ((tMax - tMin)^0.5) * atmRad) / lambda
+    PET
+}
+
+# method 5: linacre
+linacre <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+    # calculate mean temp
+    meanTemp <- tMean(tMin, tMax)
+    
+    # calculate Tm
+    Tm <- meanTemp + (0.006 * elev)
+    
+    # run the PET calculation
+    PET <- (500 * (Tm / (100 - lat)) + (15 * (meanTemp - tDew))) / (80 - meanTemp)
+    PET
+}
+
+# method 6: turc
+turc <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+    # calculate mean temp
+    meanTemp <- tMean(tMin, tMax)
+    
+    # PET is calculated differently based on relative humidity
+    if (RH < 50){
+        PET <- (1 + ((50 - RH) / 70)) * ((0.013 * meanTemp * (Rs + 50)) / (meanTemp + 15))
+    } else {
+       PET <- (0.013 * meanTemp * (Rs + 50)) / (meanTemp + 15) 
+    }
+    PET
+}
 
 ###
 # below are variables and commands to run each function using the following info
@@ -118,6 +196,7 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
 ###
 
 # set day of year using julian calendar
+doyString <- "August 21, 2013"
 doy <- 233
 
 # set max temp
@@ -140,3 +219,20 @@ Rs <- 22.5
 elev <- 61
 lat <- 37.005783
 lon <- -121.568275
+
+# calculate the mean temperature since it is used in several functions
+meanTemp <- tMean(tMin, tMax)
+
+# calculate lambda since it is used in several functions
+lambda <- 2.501 - (0.002361 * meanTemp)
+
+# report the parameters to stdOut
+print("ESS-211 Assignment 1 - Christopher Anderson")
+print("Running with the following parameters:")
+print(paste0("Day of the year : ", doyString))
+print(paste0("Julian date     : ", doy))
+print(paste0("Min temp (deg C): ", tMin))
+print(paste0("Max temp (deg C): ", tMax))
+print(paste0("Dew temp (dec C): ", tDew))
+print(paste0("Rel humidity (%): ", RH))
+print(paste0("Solar radiation (MJ/m^2)
