@@ -68,13 +68,6 @@ tMean <- function(tMin, tMax){
 ###
 
 # method 1: priestly taylor
-#  base algorithm - PET = a*((s*(Rn-G))/(lambda*(s+gamma)))
-#  a = 1.26 (constant)
-#  s = slope of vapor pressure curve
-#  gamma = psychrometric constant
-#  G = ground heat flux (assumed to equal 0)
-#  lambda = 2.501 - 0.002361 * Tmean
-
 priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     # define constant 'a'
     a <- 1.26
@@ -100,7 +93,7 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     # run the PET calculation
     PET <- a * ((vpSlope * (netRadiation - groundHeatFlux)) / 
       (lambda * (vpSlope + gamma)))
-    PET
+    return(PET)
 }
 
 # method 2: modified priestly taylor
@@ -122,7 +115,7 @@ modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon
     } else {
         PET <- EEQ * 1.1
     }
-    EEQ
+    return(PET)
 }
 
 # method 3: hammon
@@ -141,7 +134,7 @@ hammon <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     
     # run the PET calculation
     PET <- 715.5 * dl * (vpSat / (meanTemp + 273.2))
-    PET
+    return(PET)
 }
 
 # method 4: hargreaves
@@ -157,7 +150,7 @@ hargreaves <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     
     # run the PET calculation
     PET <- (0.0023 * (meanTemp + 17.8) * ((tMax - tMin)^0.5) * atmRad) / lambda
-    PET
+    return(PET)
 }
 
 # method 5: linacre
@@ -170,7 +163,7 @@ linacre <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     
     # run the PET calculation
     PET <- (500 * (Tm / (100 - lat)) + (15 * (meanTemp - tDew))) / (80 - meanTemp)
-    PET
+    return(PET)
 }
 
 # method 6: turc
@@ -187,7 +180,7 @@ turc <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     } else {
        PET <- (0.013 * meanTemp * (RsCal + 50)) / (meanTemp + 15) 
     }
-    PET
+    return(PET)
 }
 
 ###
