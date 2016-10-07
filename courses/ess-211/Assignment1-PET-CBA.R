@@ -111,7 +111,7 @@ modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon
     if (tMax < 5){
        PET <- EEQ * 0.01 * exp(0.18 * (tMax + 20))
     } else if (tMax > 24){
-        EEQ * ((tMax -24) * 0.05 + 1.1)
+        PET <- EEQ * ((tMax -24) * 0.05 + 1.1)
     } else {
         PET <- EEQ * 1.1
     }
@@ -213,6 +213,7 @@ RH <- 0.67
 # set the input solar radiation
 Rs <- 22.5
 
+# we need elevation, lat lon, and mean temp, which are not provided in the assignment
 # set elevation and lat/lon from this website
 #  http://www.latlong.net/place/gilroy-ca-usa-6030.html
 elev <- 61
