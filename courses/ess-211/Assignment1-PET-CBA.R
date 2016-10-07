@@ -98,7 +98,7 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     lambda <- 2.501 - (0.002361 * meanTemp)
     
     # run the PET calculation
-    PET <- a * ((vSlope * (netRadiation - groundHeatFlux)) / 
+    PET <- a * ((vpSlope * (netRadiation - groundHeatFlux)) / 
       (lambda * (vpSlope + gamma)))
     PET
 }
@@ -117,7 +117,7 @@ modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon
     # PET is calculated differently based on tMax
     if (tMax < 5){
        PET <- EEQ * 0.01 * exp(0.18 * (tMax + 20))
-    } elseif (tMax > 24){
+    } else if (tMax > 24){
         EEQ * ((tMax -24) * 0.05 + 1.1)
     } else {
         PET <- EEQ * 1.1
@@ -129,12 +129,15 @@ modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon
 hammon <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     # calculate the day length
     dl <- daylength(lat, doy)
+	
+	# transform day length to fraction of a day (i.e. 0-1 with 0 as no sunlight, 1 as all-day light
+	dl <- dl / 24
     
     # calculate the saturated vapor pressure
     vpSat <- esat(tMax, tMin)
     
     # calculate the mean temperature
-    meanTemp <- tMean(tmin, tMax)
+    meanTemp <- tMean(tMin, tMax)
     
     # run the PET calculation
     PET <- 715.5 * dl * (vpSat / (meanTemp + 273.2))
@@ -174,12 +177,15 @@ linacre <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
 turc <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     # calculate mean temp
     meanTemp <- tMean(tMin, tMax)
+	
+	# convert Rs from units of MJ/m^2 to cal/cm^2
+	RsCal <- Rs * 23.9
     
     # PET is calculated differently based on relative humidity
     if (RH < 50){
-        PET <- (1 + ((50 - RH) / 70)) * ((0.013 * meanTemp * (Rs + 50)) / (meanTemp + 15))
+        PET <- (1 + ((50 - RH) / 70)) * ((0.013 * meanTemp * (RsCal + 50)) / (meanTemp + 15))
     } else {
-       PET <- (0.013 * meanTemp * (Rs + 50)) / (meanTemp + 15) 
+       PET <- (0.013 * meanTemp * (RsCal + 50)) / (meanTemp + 15) 
     }
     PET
 }
@@ -237,3 +243,11 @@ print(paste0("Dew temp (dec C): ", tDew))
 print(paste0("Rel humidity (%): ", RH))
 print(paste0("Solar radiation (MJ/m^2) : ", Rs))
 print("----------")
+
+# run each PET model and report results
+print(paste0("Priestly Taylor: ", priestlyTaylor(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Modified Priestly Taylor: ", modifiedPriestlyTaylor(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Hammon: ", hammon(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Hargreaves: ", hargreaves(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Linacre: ", linacre(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Turc: ", turc(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
