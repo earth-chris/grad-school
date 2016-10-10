@@ -56,7 +56,7 @@ Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
 }
 
 ###
-# below are various functions by cba
+# below are various functions by cba for this assignment
 ###
 
 tMean <- function(tMin, tMax){
