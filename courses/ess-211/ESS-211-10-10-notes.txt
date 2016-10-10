@@ -1,0 +1,47 @@
+introductory notes
+-make sure to do the lapply from a for-loop assignment (from last r session)
+-can set a seed for random number generation - set.seed(seedVal)
+-using set seed if you want to control the sequence of random number. after a random distribution is sampled using a seed, a new seed is generated. can use the same seed to get same answer each time
+-can use ks.test() to test if distributions are different
+
+a brief review of the modeling process
+-define the purpose of the model
+	-to predict something, understand a process, etc.
+-develop a conceptual model, or an abstraction first
+	-just as important to understand was is included as excluded from the model
+-select the model type and the scale
+	-scale as temporal and spatial
+-write code to implement your conceptual model
+-estimate the 'free' parameters in your model - aka 'calibration'. 
+	-tuning, fitting, parameterizing all synonyms used to describe calibration (at least for our purposes)
+-evaluate model with sensitivity and uncertainty analysis.
+-perform model validation, or evaluation. validation a bit tricky to use because it gives a sense of 'truth' to a specific set of data
+	-use data that was NOT included in the calibration data set
+-model application
+	-prediction, inversion
+	
+-the above process is not strictly linear - there is often feedback between calibration and sensitivity analysis, balancing calibration and evaluation data, etc.
+-conceptual models should be an explicit description of what is going into your model and how you believe interactions work within the model
+-types of models - 
+-mathematical
+	-deterministic vs stochastic
+	-analytical vs simulation
+-spatial
+	-distributed vs lumped
+		-lumped means homogeneous model - doesn't specify explicitly where things happen in your extent
+-temporal
+	-dynamic vs static
+-conceptual
+	-mechanistic vs statistical
+	-process-based vs statisical
+	-bottom-up vs top-down
+-nearly all models involve a level of empiricism
+	-Y = F(X, beta)
+	-Y is the output(s)
+	-F is the form of the relationship
+	-X is the model input(s)
+	-beta is the model parameter(s)
+
+some practical modeling tips
+-must draw the line somewhere in terms of what variables are included in the model
+-use lots of comments
