@@ -32,3 +32,4 @@ Thumbs.db
 # scratch files
 ######################
 scratch/*
+.Rproj.user
