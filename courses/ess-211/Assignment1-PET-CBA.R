@@ -1,82 +1,38 @@
 # ESS-211 assignment 1, due 10-12-16
 #  cba 10/2016
+# 
+# below are the retrieved values from the 6 PET models. These can be retrieved from
+#  sourcing this script
+#
+#  "Priestly Taylor: 4.51250168465471"
+#  "Modified Priestly Taylor: 5.706963375975"
+#  "Hammon: 3.5098169976678"
+#  "Hargreaves: 4.92657369213604"
+#  "Linacre: 4.44736768602802"
+#  "Turc: 7.52164961720322"
 
-###
-# below are the functions provided in PET.helper.functions.r
-###
+# clear the workspace to remove any environmental conflicts
+rm(list = ls())
 
-# saturated vapor pressure for a given temperature
-e0 <- function(temp){
-    0.6108*exp(17.27*temp/(temp+237.3))
-}
+# load the associated helper functions for this assignment
+source("Assignment1-PET-Functions.R")
 
-# this is how FAO suggests one do it for daily esat b/c of nonlinearity of e0 function 
-esat <- function(tmax,tmin){ 
-    (e0(tmax)+e0(tmin))/2  
-}
-
-# slope of saturation curve
-s <- function(temp){
-    4098*(0.6108*exp(17.27*temp/(temp+237.3)))/(temp+237.3)^2    
-}
-
-# extraterrestrial net radiation (MJ / m^2 / day)
-Ra <- function(doy,lat){   #lat in decimal degrees       #p79 FAO
-  psi=(pi/180)*lat
-  delta=0.409*sin((2*pi*doy/365)-1.39)
-  ws=acos(-tan(psi)*tan(delta))
-  dr=1+0.033*cos(2*pi*doy/365)
-  Ra=(24*60/pi)*0.082*dr*(ws*sin(psi)*sin(delta)+cos(psi)*cos(delta)*sin(ws))
-  Ra
-}
-
-# psychrometric constant [kPa C-1]
-psychro <- function(elev){             #elev in m
-  press=101.3*((293-0.0065*elev)/293)^5.26
-  0.665e-3*press
-}
-
-# daylength (returns # hours in the day with sunlight. only for areas between 65N-6)
-daylength <-function(lat, doy){
-  psi=(pi/180)*lat
-  delta=0.409*sin((2*pi*doy/365)-1.39)
-  ws=acos(-tan(psi)*tan(delta))
-  d=24*ws/pi
-  d
-}
- 
-# net surface radiation
-Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
-  ea=e0(dew)
-  Ra=Ra(doy,lat)
-  Rso=(0.75+(2e-5)*elev)*Ra          #p85
-  Rnl=4.903e-9*(((tmax+273)^4+(tmin+273)^4)/2)*(0.34-0.14*sqrt(ea))*(1.35*(Rs/Rso)-0.35)  #p86
-  Rn=(1-0.23)*Rs-Rnl             #(Rns=(1-0.23)Rs) ; Rn=Rns-Rnl p87
-  Rn
-}
-
-###
-# below are various functions by cba for this assignment
-###
-
-tMean <- function(tMin, tMax){
+# write a function to calculate the mean temperature as it is not given
+meanTemp <- function(tMin, tMax){
     tMean <- (tMin + tMax)/2
 }
 
 ###
-# below are the 6 methods for calculating PET
+# below are functions for the 6 methods for calculating PET
 ###
 
 # method 1: priestly taylor
-priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+priestlyTaylor <- function(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat){
     # define constant 'a'
     a <- 1.26
  
-    # calculate the mean temperature for the day
-    meanTemp <- tMean(tMin, tMax)
- 
     # calculate slope of vapor pressure curve using temp above
-    vpSlope <- s(meanTemp)
+    vpSlope <- s(tMean)
  
     # calculate the psychometric constant
     gamma <- psychro(elev)
@@ -88,7 +44,7 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
     netRadiation <- Rn(lat, elev, doy, tDew, tMax, tMin, Rs)
  
     # set lambda
-    lambda <- 2.501 - (0.002361 * meanTemp)
+    lambda <- 2.501 - (0.002361 * tMean)
     
     # run the PET calculation
     PET <- a * ((vpSlope * (netRadiation - groundHeatFlux)) / 
@@ -97,7 +53,7 @@ priestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
 }
 
 # method 2: modified priestly taylor
-modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+modifiedPriestlyTaylor <- function(tMax, tMin, Rs){
     # define constant 'albedo'
     albedo <- 0.23
     
@@ -119,66 +75,54 @@ modifiedPriestlyTaylor <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon
 }
 
 # method 3: hammon
-hammon <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
+hammon <- function(doy, tMax, tMin, tMean, lat){
     # calculate the day length
     dl <- daylength(lat, doy)
-	
-	# transform day length to fraction of a day (i.e. 0-1 with 0 as no sunlight, 1 as all-day light
-	dl <- dl / 24
+	  
+    # transform day length to fraction of a day (i.e. 0-1 with 0 as no sunlight, 1 as all-day light
+	  dl <- dl / 24
     
     # calculate the saturated vapor pressure
     vpSat <- esat(tMax, tMin)
     
-    # calculate the mean temperature
-    meanTemp <- tMean(tMin, tMax)
-    
     # run the PET calculation
-    PET <- 715.5 * dl * (vpSat / (meanTemp + 273.2))
+    PET <- 715.5 * dl * (vpSat / (tMean + 273.2))
     return(PET)
 }
 
 # method 4: hargreaves
-hargreaves <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
-    # calculate mean temperature
-    meanTemp <- tMean(tMin, tMax)
-    
+hargreaves <- function(doy, tMax, tMin, tMean){
     # calculate lambda
-    lambda <- 2.501 - (0.002361 * meanTemp)
+    lambda <- 2.501 - (0.002361 * tMean)
     
     # calculate atmospheric net radiation
     atmRad <- Ra(doy, lat)
     
     # run the PET calculation
-    PET <- (0.0023 * (meanTemp + 17.8) * ((tMax - tMin)^0.5) * atmRad) / lambda
+    PET <- (0.0023 * (tMean + 17.8) * ((tMax - tMin)^0.5) * atmRad) / lambda
     return(PET)
 }
 
 # method 5: linacre
-linacre <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
-    # calculate mean temp
-    meanTemp <- tMean(tMin, tMax)
-    
+linacre <- function(tMean, elev, lat){
     # calculate Tm
-    Tm <- meanTemp + (0.006 * elev)
+    Tm <- tMean + (0.006 * elev)
     
     # run the PET calculation
-    PET <- (500 * (Tm / (100 - lat)) + (15 * (meanTemp - tDew))) / (80 - meanTemp)
+    PET <- (500 * (Tm / (100 - lat)) + (15 * (tMean - tDew))) / (80 - tMean)
     return(PET)
 }
 
 # method 6: turc
-turc <- function(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon){
-    # calculate mean temp
-    meanTemp <- tMean(tMin, tMax)
-	
-	# convert Rs from units of MJ/m^2 to cal/cm^2
-	RsCal <- Rs * 23.9
+turc <- function(tMean, RH, Rs){
+    # convert Rs from units of MJ/m^2 to cal/cm^2
+	  RsCal <- Rs * 23.9
     
     # PET is calculated differently based on relative humidity
     if (RH < 50){
-        PET <- (1 + ((50 - RH) / 70)) * ((0.013 * meanTemp * (RsCal + 50)) / (meanTemp + 15))
+        PET <- (1 + ((50 - RH) / 70)) * ((0.013 * tMean * (RsCal + 50)) / (tMean + 15))
     } else {
-       PET <- (0.013 * meanTemp * (RsCal + 50)) / (meanTemp + 15) 
+       PET <- (0.013 * tMean * (RsCal + 50)) / (tMean + 15) 
     }
     return(PET)
 }
@@ -221,10 +165,7 @@ lat <- 37.005783
 lon <- -121.568275
 
 # calculate the mean temperature since it is used in several functions
-meanTemp <- tMean(tMin, tMax)
-
-# calculate lambda since it is used in several functions
-lambda <- 2.501 - (0.002361 * meanTemp)
+tMean <- meanTemp(tMin, tMax)
 
 # report the parameters to stdOut
 print("ESS-211 Assignment 1 - Christopher Anderson")
@@ -239,9 +180,9 @@ print(paste0("Solar radiation (MJ/m^2) : ", Rs))
 print("----------")
 
 # run each PET model and report results
-print(paste0("Priestly Taylor: ", priestlyTaylor(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
-print(paste0("Modified Priestly Taylor: ", modifiedPriestlyTaylor(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
-print(paste0("Hammon: ", hammon(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
-print(paste0("Hargreaves: ", hargreaves(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
-print(paste0("Linacre: ", linacre(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
-print(paste0("Turc: ", turc(doy, tMax, tMin, RH, tDew, Rs, elev, lat, lon)))
+print(paste0("Priestly Taylor: ", priestlyTaylor(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat)))
+print(paste0("Modified Priestly Taylor: ", modifiedPriestlyTaylor(tMax, tMin, Rs)))
+print(paste0("Hammon: ", hammon(doy, tMax, tMin, tMean, lat)))
+print(paste0("Hargreaves: ", hargreaves(doy, tMax, tMin, tMean)))
+print(paste0("Linacre: ", linacre(tMean, elev, lat)))
+print(paste0("Turc: ", turc(tMean, RH, Rs)))
