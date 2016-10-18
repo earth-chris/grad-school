@@ -3,58 +3,69 @@
 #
 
 # clear the workspace
-rm(ls = ls()
+rm(ls = ls())
 
 #############################
 # below are the functions used for this assignment
 
 # set up the ISM rainfall function as translated from matlab
-ismRainfall <- function(pStrong, pWeak, tau, prMax, prInit,
-                        lSeason=135){
-  # pStrong  : precipitation in wet state (mm/day)
-  # pWeak    : precipitation in dry state (mm/day)
-  # tau      : memory length in time steps (days)
-  # prMax    : maximum probability of either state.
-  # pInit    : initial probability of strong state.
-  # lSeason  : length of the wet season (days). default = 135
+ismRainfall <- function(inputVector, lSeason=135){
+  # the input vector should be a 5-element vector, in this order:
+  # [1] pStrong  : precipitation in wet state (mm/day)
+  # [2] pWeak    : precipitation in dry state (mm/day)
+  # [3[ tau      : memory length in time steps (days)
+  # [4] prMax    : maximum probability of either state.
+  # [5] pInit    : initial probability of strong state.
   #            must be <= prMax
+  # lSeason  : length of the wet season (days). default = 135
   
+  # split the input vector for legibility
+  pStrong <- inputVector[1]
+  pWeak <- inputVector[2]
+  tau <- inputVector[3]
+  prMax <- inputVector[4]
+  prInit >- inputVector[5]
+	
   ###
-  # we're going to try vectorizing this whole code and use which()
-  #  statements so no for/while/ifs are necessary
+  # create the vectors to store outputs
   
   # create a vector to store the season's precipitatoin values
-  pSeason <- rep(NA, lSeason)
+  P <- rep(0, lSeason)
   
   # create a vector to store random probabilities
   pr <- runif(lSeason)
   
   # create a vector to store modeled wet/dry probabilities
-  p <- rep(NA, lSeason)
+  p <- rep(0, lSeason)
   
   ###
   # determine probabilities based on memory effect
-  
-  # set [tau] number of days to initial probability of strong state
-  p[1:tau] <- pInit
-  
-  # loop through all values after tau to calculate memory-based probability
-  for (i in (tau+1):lSeason){
-    p[i] <- ((sum(p[(i-tau):i-1]) / tau) - pWeak) / (pStrong - pWeak)
+  #  sadly, I could not find a way to vectorize this D:!
+  for (i in 1:lSeason) {
+    
+	if (i > tau){
+		p[i] <- (sum(P[(i-tau):i-1]) / tau - pWeak) / (pStrong - pWeak)
+	} else {
+		p[i] <- prInit
+	}
+	
+	# limit high and low probabilities based on max probability
+	if (p[i] > prMax) {
+		p[i] <- prMax
+	} else if (p[i] < (1-prMax)) {
+		p[i] <- 1-prMax
+	}
+
+	# assign precip values based on probability deviation from random
+	if (pr[i] < p[i]) { 
+		P[i] <- pStrong
+	} else {
+		P[i] <- pWeak
+	}
   }
   
-  ###
-  # limit the high and low probabilities based on maximum probability threshold
-  p[p > prMax] <- prMax
-  p[p < (1-prMax)] <- 1-prMax
-  
-  ###
-  # assign precipitation values
-  pSeason[pr < p] <- pStrong
-  pSeason[pr >= p] <- pWeak
-  
   # calculate the mean precipitation
-  pMean <- sum(pSeason) / lSeason
+  pMean <- mean(P)
   
   # return mean precip for the wet season
   return(pMean)
@@ -68,21 +79,23 @@ ismRainfall <- function(pStrong, pWeak, tau, prMax, prInit,
 # set the seed so model outputs are deterministic
 set.seed(5489)
 
-# set default parameters to use
+# set default parameters to test
 pStrong <- 9.
 pWeak <- 0.
 tau <- 17
 prMax <- 0.8
 prInit <- 0.75
+testVector = c(pStrong, pWeak, tau, prMax, prInit)
 
 # calculate the mean precipitation for a number of years to run
 nYears <- 6030
 
-test <- apply(c(pStrong, pWeak, tau, prMax, prInit), 1, ismRainfall)
+# we'll apply this as a matrix, so create a 5 x nYears matrix to apply to
+test <- apply(t(matrix(rep(testVector, nYears), nrow = length(testVector))), 1, ismRainfall)
 
 # report the first and 100th year's precipitation
-print(paste0("First year default precip : ", test[1]))
-print(paste0("100th year default precip : ", test[100]))
+print(paste0("First year default precip : ", test[1], "mm/day"))
+print(paste0("100th year default precip : ", test[100], "mm/day"))
 
 # set up custom vectors for four different scenarios
 # current climate
