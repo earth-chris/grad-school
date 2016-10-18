@@ -1,9 +1,9 @@
 # ESS-211 assignment 2, due 10-19-16
 #  cba 10/2016
 #
-
-# clear the workspace
-rm(ls = ls())
+# Question 1:
+#  First year default precip : 5.86666666666667 mm/day"
+#  100th year default precip : 6.13333333333333 mm/day"
 
 #############################
 # below are the functions used for this assignment
@@ -25,11 +25,11 @@ ismRainfall <- function(inputVector, lSeason=135){
   tau <- inputVector[3]
   prMax <- inputVector[4]
   prInit >- inputVector[5]
-	
+  
   ###
   # create the vectors to store outputs
   
-  # create a vector to store the season's precipitatoin values
+  # create a vector to store the season's precipitation values
   P <- rep(0, lSeason)
   
   # create a vector to store random probabilities
@@ -39,29 +39,30 @@ ismRainfall <- function(inputVector, lSeason=135){
   p <- rep(0, lSeason)
   
   ###
-  # determine probabilities based on memory effect
-  #  sadly, I could not find a way to vectorize this D:!
-  for (i in 1:lSeason) {
+  # loop through days in a season to determine rainfall
+  #  sadly, I could not find a way to vectorize this without breaking something
+  for (n in 1:lSeason) {
     
-	if (i > tau){
-		p[i] <- (sum(P[(i-tau):i-1]) / tau - pWeak) / (pStrong - pWeak)
-	} else {
-		p[i] <- prInit
-	}
+    # determine probability based on memory effect
+    if (n > tau){
+		  p[n] <- (sum(P[(n-tau):n-1]) / tau - pWeak) / (pStrong - pWeak)
+	  } else {
+	  	p[n] <- prInit
+	  }
 	
-	# limit high and low probabilities based on max probability
-	if (p[i] > prMax) {
-		p[i] <- prMax
-	} else if (p[i] < (1-prMax)) {
-		p[i] <- 1-prMax
-	}
+	  # limit high and low probabilities based on max probability
+	  if (p[n] > prMax) {
+	  	p[n] <- prMax
+	  } else if (p[n] < (1-prMax)) {
+	  	p[n] <- 1-prMax
+	  }
 
-	# assign precip values based on probability deviation from random
-	if (pr[i] < p[i]) { 
-		P[i] <- pStrong
-	} else {
-		P[i] <- pWeak
-	}
+  	# assign precip values based on probability deviation from random
+  	if (pr[n] < p[n]) { 
+  		P[n] <- pStrong
+  	} else {
+  		P[n] <- pWeak
+  	}
   }
   
   # calculate the mean precipitation
@@ -74,10 +75,8 @@ ismRainfall <- function(inputVector, lSeason=135){
   #return(pSeason)
 }
 #############################
+# PROBLEM 1
 # below is the script to generate the model results
-
-# set the seed so model outputs are deterministic
-set.seed(5489)
 
 # set default parameters to test
 pStrong <- 9.
@@ -85,52 +84,101 @@ pWeak <- 0.
 tau <- 17
 prMax <- 0.8
 prInit <- 0.75
-testVector = c(pStrong, pWeak, tau, prMax, prInit)
+testVector <- c(pStrong, pWeak, tau, prMax, prInit)
 
 # calculate the mean precipitation for a number of years to run
-nYears <- 6030
+pastYears <- 6030
+futureYears <- 250
 
 # we'll apply this as a matrix, so create a 5 x nYears matrix to apply to
-test <- apply(t(matrix(rep(testVector, nYears), nrow = length(testVector))), 1, ismRainfall)
+testMatrix <- t(matrix(rep(testVector, pastYears), nrow = length(testVector)))
+
+# apply the function to the testMatrix
+set.seed(5489)
+test <- apply(testMatrix, 1, ismRainfall)
 
 # report the first and 100th year's precipitation
-print(paste0("First year default precip : ", test[1], "mm/day"))
-print(paste0("100th year default precip : ", test[100], "mm/day"))
+print(paste("First year default precip :", test[1], "mm/day"))
+print(paste("100th year default precip :", test[100], "mm/day"))
 
-# set up custom vectors for four different scenarios
-# current climate
+#############################
+# PROBLEM 2
+# set up custom vectors and matrices for four different scenarios
+
+# 1. current climate
 s1vec <- c(9.0, 0.0, 17, 0.8, 0.75)
+s1mat <- t(matrix(rep(s1vec, pastYears), nrow = length(s1vec)))
 
-# 2150-2200 climate
+# 2. 2150-2200 climate
 s2vec <- c(10.9, 1.9, 17, 0.82, 0.2)
+s2mat <- t(matrix(rep(s2vec, futureYears), nrow = length(s2vec)))
 
-# high atmospheric saturation
+# 3. high atmospheric saturation
 s3vec <- c(10.9, 1.9, 17, 0.8, 0.75)
+s3mat <- t(matrix(rep(s3vec, pastYears), nrow = length(s3vec)))
 
-# changing sea level pressure
+# 4. changing sea level pressure
 s4vec <- c(9.0, 0.0, 0.8, 0.2)
+s4mat <- t(matrix(rep(s4vec, pastYears), nrow = length(s4vec)))
 
 # run each of the four scenarios using apply
-s1 <- apply(rep(s1vec, nYears), 1, ismRainfall)
-s2 <- apply(rep(s2vec, nYears), 1, ismRainfall)
-s3 <- apply(rep(s3vec, nYears), 1, ismRainfall)
-s4 <- apply(rep(s4vec, nYears), 1, ismRainfall)
+set.seed(5489)
+s1 <- apply(s1mat, 1, ismRainfall)
+s2 <- apply(s2mat, 1, ismRainfall)
+s3 <- apply(s3mat, 1, ismRainfall)
+s4 <- apply(s4mat, 1, ismRainfall)
 
 #############################
 # create the four-panel figures
 
-# create a four-panel layout
-par(mfcol = c(2,2))
+# create a four-panel layout, leaving room for a title
+par(mfcol = c(2,2), oma = c(0,0,2,0))
+
+# we'll set the min/max bounds for the plots based on the range of all outputs
+xmin <- min(c(min(s1), min(s2), min(s3), min(s4)))
+xmax <- max(c(max(s1), max(s2), max(s3), max(s4)))
 
 # create a vector for bins to use in the histograms
-breaks = c(0:50 * 0.2)
+breaks <- c((xmin*5):((xmax+0.2)*5) * 0.2)
 
 # set up variables for the plot labels
 xlab <- "mm / day"
-ylab <- paste0("days out of", nYears)
+ylabPast <- paste("days out of", pastYears)
+ylabFuture <- paste("days out of", futureYears)
 
-# plot each of the four histograms
-s1plot <- hist(s1, breaks = breaks, xlab = xlab, ylab = ylab)
-s2plot <- hist(s2, breaks = breaks, xlab = xlab, ylab = ylab)
-s3plot <- hist(s3, breaks = breaks, xlab = xlab, ylab = ylab)
-s4plot <- hist(s4, breaks = breaks, xlab = xlab, ylab = ylab)
+# set the colors for each plot
+s1color <- 'light blue'
+s2color <- 'orange'
+s3color <- 'salmon'
+s4color <- 'green'
+
+# set the titles for each plot
+s1title <- "Current Climate"
+s2title <- "2150-2020 Climate"
+s3title <- "High Atmospheric Sat."
+s4title <- "Delta Sea Level Pressure"
+
+# plot each of the four histograms, adding quartile lines and the means
+s1plot <- hist(s1, breaks = breaks, xlab = xlab, ylab = ylabPast, main = s1title, col = s1color)
+abline(v = quantile(s1)[2:4], lty = 2)
+abline(v = mean(s1), lwd = 3)
+
+s3plot <- hist(s3, breaks = breaks, xlab = xlab, ylab = ylabFuture, main = s3title, col = s3color)
+abline(v = quantile(s3)[2:4], lty = 2)
+abline(v = mean(s3), lwd = 3)
+
+s2plot <- hist(s2, breaks = breaks, xlab = xlab, ylab = ylabFuture, main = s2title, col = s2color)
+abline(v = quantile(s2)[2:4], lty = 2)
+abline(v = mean(s2), lwd = 3)
+
+s4plot <- hist(s4, breaks = breaks, xlab = xlab, ylab = ylabFuture, main = s4title, col = s4color)
+abline(v = quantile(s4)[2:4], lty = 2)
+abline(v = mean(s4), lwd = 3)
+
+# add a legend
+legend('topright', lty = c(1,2), lwd = c(3,1), legend = c('Mean', 'Quartiles'))
+
+# and add a title
+title('Schewe-Levermann Indian Summer Monsoon Rainfall', outer = TRUE)
+
+# that's all, folks!
