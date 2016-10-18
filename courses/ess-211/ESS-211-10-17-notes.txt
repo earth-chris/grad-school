@@ -1,0 +1,41 @@
+-model interim report due - november 7th
+-review what that means
+-really focus on parts 1-4, 6, from our 8-step modeling framework.
+-show up to office hours to discuss the model project
+-not a regression project - simulation modeling should be the focus
+-look up the schedule for the days i'll be missing coming up
+
+model calibration
+-went over least-squares regression - ask someone!
+-brute force - trying all parameter combinations.
+  - works well only with small set of parameters.
+-gradient search (or hot-cold) methods (e.g. newton's)
+  -uses iteration of finding the derivative of a function at multiple points and sets an approximation based on how close you arrive to your minimum
+  -doesn't handle functions that have multiple local minima
+
+why not just stop at least squares?
+-fitting samples may not be entirely predictive
+-you can have different responses on either side of your origin
+-sometimes hard to interpret the model and we want to identify a subset of variables that are most important
+-sometimes prediction error is too high, and can be lower for values of B that don't minimize least squares
+-you can easily overfit a model by overparameritizing - then your model isn't predictive.
+
+bias-variance trade-off
+-bias - average error of model over all possible training samples
+-variance - variance of error of model over all possible training samples
+-trick is to balance bias and variance
+-you can reduce your bias by adding variance to the model, and vice-versa. it is a good thing to do this if your decrease in bias is greater than your increase in variance.
+-E[Y-Ymean]^2] = E[(F(x) + error - Fmean(x))^2]
+-bias in a least squares model should be zero, but variance can be high
+-overfit is when you have high variance - your model changes drastically as you include additional samples
+-bayesian models are useful when you have limited data relative to the number of parameters - can use prior knowledge or expectations
+-maximum likelihood estimates another alternative to least squares. requires knowledge of distribution of data set
+-bayesian methods used because they can continually update priors based on data that is used, and treats parameters like distributions, not single data points.
+
+review
+-a good precition = low expected prediction error
+-calibration = using sample data to adjust parameters
+-calibration error != prediction error
+-e[prediction error] = (model bias)^2 + model variance + sigma^2
+-some models have low bias but high variance
+-can add bias to reduce total error by not overfitting.
