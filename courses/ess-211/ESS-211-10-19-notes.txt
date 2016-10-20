@@ -1,0 +1,18 @@
+Mostly cross-validation - friday will end calibration.
+-model selection vs calibration
+-selection refers to the shape/structure of the model
+-calibration refers more to finding values for individual parameters, once a model has been selected
+-adding complexity refers to adding additional parameters to your model
+-how do you select a model?
+-for simulation, you want to find things that predict well out of sample. don't care as much about finding something good for your samples - want to be able to go out of bag.
+-holding data out of the bag is tough sometimes with having low sample size
+-how 'out of sample' the out of sample data is should be considered. if they're all from the same measurement pool, how independent are they really?
+-can use multi-model comparisons, too
+-e.g. create a model using 100% of samples, then create a new model using a k-fold technique
+-n-fold technique is a leave-one-out method, where you run the model n-1 times, leaving out a single sample each time
+-cross validation not bootstrapping - add data back to your population and randomly sample over and over again - does not guarantee all data points are tested, as they can be randomly not included
+-k fold is splitting data into 1/k groups of data
+-model you use is the one calibrated with all the data. cross validation useful for getting cross-validation estimates
+-n-fold can introduce problems if you have a sample that throws off your model calibrations - could test this by looking at your variance between models.
+-training error can always improve by adding additional parameters. however, you get into overfitting
+-adjusted r^2 also useful when understanding number of parameters to use, so is akaike information criterion.
