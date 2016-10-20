@@ -148,6 +148,9 @@ petTurc <- function(tMean, RH, Rs){
   # convert Rs from units of MJ/m^2 to cal/cm^2
   RsCal <- Rs * 23.9
   
+  # convert RH to 1-100 scale
+  RH = RH * 100
+  
   # PET is calculated differently based on relative humidity
   if (RH < 50){
     PET <- (1 + ((50 - RH) / 70)) * ((0.013 * tMean * (RsCal + 50)) / (tMean + 15))
@@ -158,3 +161,166 @@ petTurc <- function(tMean, RH, Rs){
 }
 
 #############################
+# functions written by cba for assignment 2
+
+# set up the ISM rainfall function as translated from matlab
+ismRainfall <- function(inputVector, lSeason=135){
+  # the input vector should be a 5-element vector, in this order:
+  # [1] pStrong  : precipitation in wet state (mm/day)
+  # [2] pWeak    : precipitation in dry state (mm/day)
+  # [3[ tau      : memory length in time steps (days)
+  # [4] prMax    : maximum probability of either state.
+  # [5] pInit    : initial probability of strong state.
+  #                must be <= prMax
+  # lSeason  : length of the wet season (days). default = 135
+  
+  # split the input vector for legibility
+  pStrong <- inputVector[1]
+  pWeak <- inputVector[2]
+  tau <- inputVector[3]
+  prMax <- inputVector[4]
+  prInit <- inputVector[5]
+  
+  ###
+  # create a vector to store the season's precipitation values
+  P <- rep(0, lSeason)
+  
+  ###
+  # loop through days in a season to determine rainfall
+  for (n in 1:lSeason) {
+    
+    # set a random number
+    pr <- runif(1)
+    
+    # determine probability based on memory effect
+    if (n > tau){
+      p <- (sum(P[(n-tau):(n-1)]) / tau - pWeak) / (pStrong - pWeak)
+    } else {
+      p <- prInit
+    }
+    
+    # limit high and low probabilities based on max probability
+    if (p > prMax) {
+      p <- prMax
+    } else if (p < (1-prMax)) {
+      p <- 1-prMax
+    }
+    
+    # assign precip values based on probability deviation from random
+    if (pr < p) { 
+      P[n] <- pStrong
+    } else {
+      P[n] <- pWeak
+    }
+  }
+  
+  # calculate the mean precipitation
+  pMean <- mean(P)
+  
+  # return mean precip for the wet season
+  return(pMean)
+}
+
+#############################
+# functions provided by teaching group for assignment 3
+
+# 1-parameter model (bucket capacity)
+bucket1 <- function(pars, P, PET) {
+  # in this model:
+  # pars : the input parameter values - one element - the bucket's maximum capacity
+  # P    : precipitation vector (i.e. water in)
+  # PET  : potential evapotranspiration vector (i.e. water out)
+  
+  # set max capacity for the bucket
+  full.bucket <- pars[1]
+  
+  # create a vector to store runoff based on the # of precip values we have
+  n <- length(P)
+  runoff <- rep(0, n)
+  
+  # set the starting state of the bucket as the lower of a) the bucket's max capacity or b) the 
+  #  difference between precip and PET (unless thats < 0)
+  bucket <- min(full.bucket, max(P[1] - PET[1], 0))
+  
+  # loop through each time step in the precip/PET vectors
+  for (m in 2:n) {
+    
+    # I don't know why these lines exist since they aren't used elsewhere
+    3
+    infilt <- P[m]
+    AET <- PET[m]
+    
+    # fill/drain the bucket based on the difference in precip and PET
+    bucket <- bucket + P[m] - PET[m]
+    
+    # send bucket overflow to runoff, or to 0 if it empties
+    if (bucket > full.bucket) {
+      runoff[m] <- bucket - full.bucket
+      bucket <- full.bucket
+    } else if (bucket<0) {
+      bucket <- 0
+    }
+  }
+  
+  # return our output runoff values
+  return(runoff)
+}
+
+# 3-parameter model (bucket capacity, varying P scaling factor, varying PET scaling factor)
+bucket3 = function(pars,P,PET) {
+  # in this model:
+  # pars : the input parameter values - 3 elements 
+  #        [1] the bucket's maximum capacity
+  #        [2] the minimum infiltration (i.e. the fraction of precip that doesn't infiltrate the soil)
+  #        [3] the wilting point (i.e. when soil dries out)
+  # P    : precipitation vector (i.e. water in)
+  # PET  : potential evapotranspiration vector (i.e. water out)
+  
+  # set variables from the input parameters
+  full.bucket <- pars[1]
+  min.infilt <- pars[2]
+  wilt.point <- pars[3]
+  
+  # initialize the bucket values
+  bucket <- min(full.bucket, max(P[1] - PET[1], 0)) 
+  
+  # create an actual evapotranspiration vector. but why? it gets redefined later...
+  n <- length(P)
+  AET <- runoff <- rep(0,n)
+  
+  # loop through each time step in the precip/PET vectors
+  for (m in 2:n) {
+    
+    # set the saturation level
+    beta = bucket/full.bucket 
+    
+    # update infiltration fraction based on how full the bucket is
+    infilt.frac <- (1 - min.infilt) + beta * (2 * min.infilt - 1)
+    
+    # update actual ET fraction based on how full the bucket is
+    aet.frac <- max(0, min(1, (beta - wilt.point) / (1 - 2 * wilt.point)))
+    
+    # set actual infiltration based on precip and the fraction of infiltration
+    infilt <- P[m] * infilt.frac
+    
+    # set runoff as difference between precip and infiltration
+    runoff[m] <- P[m] - infilt
+    
+    # set actual ET as product of potential ET and the fraction of actual ET
+    AET <- PET[m] * aet.frac
+    
+    # fill/drain the bucket
+    bucket <- bucket + infilt - AET
+    
+    # send bucket overflow to runoff, or to 0 if it empties
+    if (bucket > full.bucket) {
+      runoff[m] <- runoff[m] + bucket - full.bucket
+      bucket <- full.bucket
+    } else if (bucket < 0) {
+      bucket <- 0
+    }
+  }
+  
+  # return our output runoff values
+  return(runoff)
+}

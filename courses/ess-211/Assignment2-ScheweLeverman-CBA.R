@@ -24,7 +24,7 @@ ismRainfall <- function(inputVector, lSeason=135){
   pWeak <- inputVector[2]
   tau <- inputVector[3]
   prMax <- inputVector[4]
-  prInit >- inputVector[5]
+  prInit <- inputVector[5]
   
   ###
   # create a vector to store the season's precipitation values
@@ -65,9 +65,6 @@ ismRainfall <- function(inputVector, lSeason=135){
   
   # return mean precip for the wet season
   return(pMean)
-  
-  # return the full season's precip vector
-  #return(pSeason)
 }
 #############################
 # PROBLEM 1
