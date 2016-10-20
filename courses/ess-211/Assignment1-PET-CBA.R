@@ -117,7 +117,10 @@ linacre <- function(tMean, elev, lat){
 turc <- function(tMean, RH, Rs){
     # convert Rs from units of MJ/m^2 to cal/cm^2
 	  RsCal <- Rs * 23.9
-    
+	  
+	  # convert RH to 1-100 scale
+	  RH = RH * 100
+	  
     # PET is calculated differently based on relative humidity
     if (RH < 50){
         PET <- (1 + ((50 - RH) / 70)) * ((0.013 * tMean * (RsCal + 50)) / (tMean + 15))
