@@ -104,3 +104,41 @@ bucket3 = function(pars,P,PET) {
   # return our output runoff values
   return(runoff)
 }
+
+# create loss functions for two vectors
+loss.rmse <- function(x, y){
+	rmse <- sqrt(mean((x - y)^2, na.rm = TRUE))
+}
+loss.abs <- function(x, y){
+	abse <- mean(abs(x, y), na.rm = TRUE)
+}
+
+# gonna test the optim() function
+#  based on nelder-mead. 
+
+# change to the working directory and read the rdata
+setwd("~/Downloads/source/aei-grad-school/courses/ess-211/course_material/")
+load('runoff.Rdata')
+
+# we'll load bucket with parameters c(160, .53, .26)
+classpar <- c(160, 0.53, 0.26)
+
+# run bucket3 using class test parameters and bucket 1
+classbucket3 <- bucket3(classpar, P, PET)
+
+# run with just bucket 1 to see how close it approximates bucket 3
+classbucket1 <- bucket1(classpar, P, PET)
+
+# calculate rmse between these
+bucket.rms <- loss.rmse(classbucket3, classbucket1)
+
+# create a function to calculate loss function
+minfunc <- function(pars, loss, model, y, P, PET){
+	loss(y, model(pars, P, PET))
+}
+
+# set a variable with the parameters that differ from the 'truth' (classbucket3)
+par0 <- c(100, 0.7, 0.7)
+
+# run it with optim function, which calculates the loss function over a series of parameters
+bucket.optim <- optim(par0, minfunc, loss=loss.rmse, model=bucket3, y=classbucket3, P=P, PET=PET, method = 'L-BFGS-B')
