@@ -329,15 +329,21 @@ bucket3 = function(pars,P,PET) {
 # methods to calculate loss functions
 
 # root mean-squared error
-loss.rmse <- function(y,yhat){
+loss.rmse <- function(y, yhat){
 	sqrt(mean((y-yhat)^2, na.rm=TRUE))
 } 
 
 # mean absolute error
-loss.abs <- function(y,yhat){
+loss.abs <- function(y, yhat){
 	mean(abs(y-yhat), na.rm=TRUE)
 } 
 # create a function to calculate loss function
 minfunc <- function(pars, loss, model, y, P, PET){
 	loss(y, model(pars, P, PET))
+}
+
+# create a method to calculate the modal value of a vector
+mode <- function(x) {
+  xunique <- unique(x)
+  xunique[which.max(tabulate(match(x, xunique)))]
 }
