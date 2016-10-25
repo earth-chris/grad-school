@@ -4,22 +4,22 @@
 # functions provided by teaching group for assignment 1 (PET)
 
 # saturated vapor pressure for a given temperature
-e0 <- function(temp){
+pet.e0 <- function(temp){
   0.6108*exp(17.27*temp/(temp+237.3))
 }
 
 # this is how FAO suggests one do it for daily esat b/c of nonlinearity of e0 function 
-esat <- function(tmax,tmin){ 
+pet.esat <- function(tmax,tmin){ 
   (e0(tmax)+e0(tmin))/2  
 }
 
 # slope of saturation curve
-s <- function(temp){
+pet.s <- function(temp){
   4098*(0.6108*exp(17.27*temp/(temp+237.3)))/(temp+237.3)^2    
 }
 
 # extraterrestrial net radiation (MJ / m^2 / day)
-Ra <- function(doy,lat){   #lat in decimal degrees       #p79 FAO
+pet.Ra <- function(doy,lat){   #lat in decimal degrees       #p79 FAO
   psi=(pi/180)*lat
   delta=0.409*sin((2*pi*doy/365)-1.39)
   ws=acos(-tan(psi)*tan(delta))
@@ -29,13 +29,13 @@ Ra <- function(doy,lat){   #lat in decimal degrees       #p79 FAO
 }
 
 # psychrometric constant [kPa C-1]
-psychro <- function(elev){             #elev in m
+pet.psychro <- function(elev){             #elev in m
   press=101.3*((293-0.0065*elev)/293)^5.26
   0.665e-3*press
 }
 
 # daylength (returns # hours in the day with sunlight. only for areas between 65N-6)
-daylength <-function(lat, doy){
+pet.daylength <-function(lat, doy){
   psi=(pi/180)*lat
   delta=0.409*sin((2*pi*doy/365)-1.39)
   ws=acos(-tan(psi)*tan(delta))
@@ -44,7 +44,7 @@ daylength <-function(lat, doy){
 }
 
 # net surface radiation
-Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
+pet.Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
   ea=e0(dew)
   Ra=Ra(doy,lat)
   Rso=(0.75+(2e-5)*elev)*Ra          #p85
@@ -57,7 +57,7 @@ Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
 # functions written by cba for assignment 1 (PET)
 
 # method 1: priestly taylor
-petPriestlyTaylor <- function(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat){
+pet.priestlyTaylor <- function(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat){
   # define constant 'a'
   a <- 1.26
   
@@ -83,7 +83,7 @@ petPriestlyTaylor <- function(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat){
 }
 
 # method 2: modified priestly taylor
-petModifiedPriestlyTaylor <- function(tMax, tMin, Rs){
+pet.modifiedPriestlyTaylor <- function(tMax, tMin, Rs){
   # define constant 'albedo'
   albedo <- 0.23
   
@@ -105,7 +105,7 @@ petModifiedPriestlyTaylor <- function(tMax, tMin, Rs){
 }
 
 # method 3: hammon
-petHammon <- function(doy, tMax, tMin, tMean, lat){
+pet.hammon <- function(doy, tMax, tMin, tMean, lat){
   # calculate the day length
   dl <- daylength(lat, doy)
   
@@ -121,7 +121,7 @@ petHammon <- function(doy, tMax, tMin, tMean, lat){
 }
 
 # method 4: hargreaves
-petHargreaves <- function(doy, tMax, tMin, tMean){
+pet.hargreaves <- function(doy, tMax, tMin, tMean){
   # calculate lambda
   lambda <- 2.501 - (0.002361 * tMean)
   
@@ -134,7 +134,7 @@ petHargreaves <- function(doy, tMax, tMin, tMean){
 }
 
 # method 5: linacre
-petLinacre <- function(tMean, elev, lat){
+pet.linacre <- function(tMean, elev, lat){
   # calculate Tm
   Tm <- tMean + (0.006 * elev)
   
@@ -144,7 +144,7 @@ petLinacre <- function(tMean, elev, lat){
 }
 
 # method 6: turc
-petTurc <- function(tMean, RH, Rs){
+pet.turc <- function(tMean, RH, Rs){
   # convert Rs from units of MJ/m^2 to cal/cm^2
   RsCal <- Rs * 23.9
   
@@ -164,7 +164,7 @@ petTurc <- function(tMean, RH, Rs){
 # functions written by cba for assignment 2
 
 # set up the ISM rainfall function as translated from matlab
-ismRainfall <- function(inputVector, lSeason=135){
+ism.rainfall <- function(inputVector, lSeason=135){
   # the input vector should be a 5-element vector, in this order:
   # [1] pStrong  : precipitation in wet state (mm/day)
   # [2] pWeak    : precipitation in dry state (mm/day)
@@ -323,4 +323,21 @@ bucket3 = function(pars,P,PET) {
   
   # return our output runoff values
   return(runoff)
+}
+
+#############################
+# methods to calculate loss functions
+
+# root mean-squared error
+loss.rmse <- function(y,yhat){
+	sqrt(mean((y-yhat)^2, na.rm=TRUE))
+} 
+
+# mean absolute error
+loss.abs <- function(y,yhat){
+	mean(abs(y-yhat), na.rm=TRUE)
+} 
+# create a function to calculate loss function
+minfunc <- function(pars, loss, model, y, P, PET){
+	loss(y, model(pars, P, PET))
 }
