@@ -326,6 +326,25 @@ bucket3 = function(pars,P,PET) {
 }
 
 #############################
+# functions provided by teaching group for assignment 4
+
+# calculate cross validation rmse
+rmse <- function(train, test) {
+  
+  # perform a linear regression
+  fit <- lm(y~., data = train) 
+  
+  # calculate rmse of training fit
+  train.err <- sqrt(mean((fit$resid)^2))
+  
+  # calculate the rmse of training vs test data
+  test.err = sqrt(mean((test$y - predict(fit, test))^2)) #RMS CV RESIDUALS
+  
+  # return the training and test error
+  return(c(train.err, test.err))
+}
+
+#############################
 # methods to calculate loss functions
 
 # root mean-squared error
@@ -346,4 +365,9 @@ minfunc <- function(pars, loss, model, y, P, PET){
 mode <- function(x) {
   xunique <- unique(x)
   xunique[which.max(tabulate(match(x, xunique)))]
+}
+
+# create a method to calculate the standard error of a vector
+se <- function(x) {
+  sd(x) / sqrt(length(x))
 }
