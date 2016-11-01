@@ -2,8 +2,8 @@
 #  cba 10/2016
 
 # change to the working directory and read the rdata
-#setwd("~/cba/aei-grad-school/courses/ess-211/")
-setwd("~/src/aei-grad-school/courses/ess-211/")
+setwd("~/cba/aei-grad-school/courses/ess-211/")
+#setwd("~/src/aei-grad-school/courses/ess-211/")
 
 # this functions file contains bucket1, bucket3, and the loss functions
 source("ESS-211-Functions.R")
