@@ -6,6 +6,7 @@ setwd("~/cba/aei-grad-school/courses/ess-211/")
 
 # source the written functions
 source("ESS-211-Functions.R")
+library(gplots)
 
 # read the input data for assignment 4
 data <- read.csv(file = "course_material/exercise3.data.csv", header = TRUE)
@@ -35,7 +36,7 @@ cv.err <- function(data.frame, K){
 }
 
 #############################
-# task 3 - varying k
+# task 2 - varying k
 
 # set up a vector for the different values of k we'll test, from 2 (50% hold-out) to
 #  nrows/2 (two samples per hold-out)
@@ -48,7 +49,7 @@ K <- append(K, nrow(data))
 testMatrix <- matrix(ncol = 2, nrow = length(K))
 trainMatrix <- matrix(ncol = 2, nrow = length(K))
 
-# loop through each of the k-fold methods and calculate mean/stdev test/training error
+# loop through each of the k-fold methods and calculate mean/stdev for test/training error
 for (i in 1:length(K)){
   # run the k-fold xval procedure on the i'th value of K
   ifoldMatrix <- cv.err(data, K[i])
@@ -64,8 +65,15 @@ for (i in 1:length(K)){
 testMatrix[,2] <- testMatrix[,2] / sqrt(K)
 trainMatrix[,2] <- trainMatrix[,2] / sqrt(K)
 
-# plot the means and confidence intervals of the training and test error with varying K
+# find the min and max ranges for all data to plot on the same axes
+ymin <- min(c(trainMatrix[,1]-trainMatrix[,2], testMatrix[,1]-testMatrix[,2]))
+ymax <- max(c(trainMatrix[,1]+trainMatrix[,2], testMatrix[,1]+testMatrix[,2]))
+buffer <- (ymax - ymin) * 0.1
+ylim <- c(ymin-buffer, ymax+buffer)
+
+# plot the means and standard errors of the training and test error with varying K
 #  first, set up titles, etc.
+mainTitle <- "Training and test error as a function of the number of folds"
 trainTitle <- "Training error"
 testTitle <- "Testing error"
 ylab <- "RMSE"
@@ -74,12 +82,68 @@ xlab <- "N folds"
 # set up x axis as the number of training samples per fold
 xvals <- nrow(data)/K
 
-par(mfcol=c(1,2))
+# set up plot structure
+par(mfcol=c(1,2), oma = c(0,0,2,0))
 
 # set up the training data plot
-plotCI(K, trainMatrix[,1], type = 'p', uiw = trainMatrix[,2], liw = trainMatrix[,2], 
+plotCI(K, trainMatrix[,1], type = 'p', uiw = trainMatrix[,2], liw = trainMatrix[,2], ylim = ylim,
        pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'orange')
 
 # set up the test data plot
-plotCI(K, testMatrix[,1], type = 'p', uiw = testMatrix[,2], liw = testMatrix[,2], 
+plotCI(K, testMatrix[,1], type = 'p', uiw = testMatrix[,2], liw = testMatrix[,2], ylim = ylim,
        pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'aquamarine')
+
+# and add a title
+title(mainTitle, outer = TRUE)
+
+#############################
+# task 3 - adding noise
+
+# add three columnds of noise to the data
+data[,5:7] <- rnorm(3 * nrow(data), sd = 1)
+
+# create matrcesx to store outputs
+noiseTrainMatrix <- matrix(ncol = 2, nrow = ncol(data)-1)
+noiseTestMatrix <- matrix(ncol = 2, nrow = ncol(data)-1)
+
+# iteratively add columns to the linear regression to see how cross validation errors change
+#  with additional variables and noise
+for (i in 2:ncol(data)){
+  
+  # we're going to use the leave-one-out method to assess the contribution of additional variables/noise
+  columnMatrix <- cv.err(data[,1:i], nrow(data))
+  
+  # assign mean/stdev to matrix
+  noiseTrainMatrix[i-1,1] <- mean(columnMatrix[,1])
+  noiseTrainMatrix[i-1,2] <- sd(columnMatrix[,1])
+  noiseTestMatrix[i-1,1] <- mean(columnMatrix[,2])
+  noiseTestMatrix[i-1,2] <- sd(columnMatrix[,2])
+}
+
+# plot the means and standard errors of the training and test error with varying number of terms to fit
+#  first, set up titles, etc.
+mainTitle <- "Training and test error as a function of the number of terms"
+trainTitle <- "Training error"
+testTitle <- "Testing error"
+ylab <- "RMSE"
+xlab <- "N terms fit"
+
+# find the min and max ranges for all data to plot on the same axes
+ymin <- min(c(noiseTrainMatrix[,1]-noiseTrainMatrix[,2], noiseTestMatrix[,1]-noiseTestMatrix[,2]))
+ymax <- max(c(noiseTrainMatrix[,1]+noiseTrainMatrix[,2], noiseTestMatrix[,1]+noiseTestMatrix[,2]))
+buffer <- (ymax - ymin) * 0.1
+ylim <- c(ymin-buffer, ymax+buffer)
+
+# set up plot structure
+par(mfcol=c(1,2), oma = c(0,0,2,0))
+
+# set up the training data plot
+plotCI(1:(ncol(data)-1), noiseTrainMatrix[,1], type = 'p', uiw = noiseTrainMatrix[,2], liw = noiseTrainMatrix[,2], ylim = ylim,
+       pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'orange')
+
+# set up the test data plot
+plotCI(1:(ncol(data)-1), noiseTestMatrix[,1], type = 'p', uiw = noiseTestMatrix[,2], liw = noiseTestMatrix[,2], ylim = ylim,
+       pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'aquamarine')
+
+# and add a title
+title(mainTitle, outer = TRUE)
