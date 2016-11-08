@@ -68,7 +68,7 @@ trainMatrix[,2] <- trainMatrix[,2] / sqrt(K)
 # find the min and max ranges for all data to plot on the same axes
 ymin <- min(c(trainMatrix[,1]-trainMatrix[,2], testMatrix[,1]-testMatrix[,2]))
 ymax <- max(c(trainMatrix[,1]+trainMatrix[,2], testMatrix[,1]+testMatrix[,2]))
-buffer <- (ymax - ymin) * 0.1
+buffer <- (ymax - ymin) * 0.05
 ylim <- c(ymin-buffer, ymax+buffer)
 
 # plot the means and standard errors of the training and test error with varying K
@@ -89,9 +89,17 @@ par(mfcol=c(1,2), oma = c(0,0,2,0))
 plotCI(K, trainMatrix[,1], type = 'p', uiw = trainMatrix[,2], liw = trainMatrix[,2], ylim = ylim,
        pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'orange')
 
+# add a legend
+legend('topright', legend=c('Mean', 'Standard error'),
+       col=c('black', 'orange'), lty=c(NA, 1), pch=c(19,NA))
+
 # set up the test data plot
 plotCI(K, testMatrix[,1], type = 'p', uiw = testMatrix[,2], liw = testMatrix[,2], ylim = ylim,
-       pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'aquamarine')
+       pch = 19, ylab = ylab, xlab = xlab, main = testTitle, col = 'black', barcol = 'aquamarine')
+
+# add a legend
+legend('topright', legend=c('Mean', 'Standard error'),
+       col=c('black', 'aquamarine'), lty=c(NA, 1), pch=c(19,NA))
 
 # and add a title
 title(mainTitle, outer = TRUE)
@@ -100,9 +108,9 @@ title(mainTitle, outer = TRUE)
 # task 3 - adding noise
 
 # add three columnds of noise to the data
-data[,5:7] <- rnorm(3 * nrow(data), sd = 1)
+data[,5:7] <- rnorm(3 * nrow(data), sd = 4)
 
-# create matrcesx to store outputs
+# create matrices to store outputs
 noiseTrainMatrix <- matrix(ncol = 2, nrow = ncol(data)-1)
 noiseTestMatrix <- matrix(ncol = 2, nrow = ncol(data)-1)
 
@@ -120,9 +128,13 @@ for (i in 2:ncol(data)){
   noiseTestMatrix[i-1,2] <- sd(columnMatrix[,2])
 }
 
+# replace the stdev values with standard error values
+noiseTestMatrix[,2] <- noiseTestMatrix[,2] / sqrt(nrow(data))
+noiseTrainMatrix[,2] <- noiseTrainMatrix[,2] / sqrt(nrow(data))
+
 # plot the means and standard errors of the training and test error with varying number of terms to fit
 #  first, set up titles, etc.
-mainTitle <- "Training and test error as a function of the number of terms"
+mainTitle <- "Training and test error as a function of the number of terms (SD = 4)"
 trainTitle <- "Training error"
 testTitle <- "Testing error"
 ylab <- "RMSE"
@@ -131,7 +143,7 @@ xlab <- "N terms fit"
 # find the min and max ranges for all data to plot on the same axes
 ymin <- min(c(noiseTrainMatrix[,1]-noiseTrainMatrix[,2], noiseTestMatrix[,1]-noiseTestMatrix[,2]))
 ymax <- max(c(noiseTrainMatrix[,1]+noiseTrainMatrix[,2], noiseTestMatrix[,1]+noiseTestMatrix[,2]))
-buffer <- (ymax - ymin) * 0.1
+buffer <- (ymax - ymin) * 0.05
 ylim <- c(ymin-buffer, ymax+buffer)
 
 # set up plot structure
@@ -141,9 +153,17 @@ par(mfcol=c(1,2), oma = c(0,0,2,0))
 plotCI(1:(ncol(data)-1), noiseTrainMatrix[,1], type = 'p', uiw = noiseTrainMatrix[,2], liw = noiseTrainMatrix[,2], ylim = ylim,
        pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'orange')
 
+# add a legend
+legend('topright', legend=c('Mean', 'Standard error'),
+       col=c('black', 'orange'), lty=c(NA, 1), pch=c(19,NA))
+
 # set up the test data plot
 plotCI(1:(ncol(data)-1), noiseTestMatrix[,1], type = 'p', uiw = noiseTestMatrix[,2], liw = noiseTestMatrix[,2], ylim = ylim,
-       pch = 19, ylab = ylab, xlab = xlab, main = trainTitle, col = 'black', barcol = 'aquamarine')
+       pch = 19, ylab = ylab, xlab = xlab, main = testTitle, col = 'black', barcol = 'aquamarine')
+
+# add a legend
+legend('topright', legend=c('Mean', 'Standard error'),
+       col=c('black', 'aquamarine'), lty=c(NA, 1), pch=c(19,NA))
 
 # and add a title
 title(mainTitle, outer = TRUE)
