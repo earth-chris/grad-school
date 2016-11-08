@@ -344,6 +344,28 @@ rmse <- function(train, test) {
   return(c(train.err, test.err))
 }
 
+# and one written by cba for assignment 4
+# a function to calculate rmse for k splits
+cv.err <- function(data.frame, K){
+  # split the data into ~equal chunks
+  #  first, find the length of the data frame to split
+  nr <- nrow(data.frame)
+  
+  # split the data using the cut funtion
+  groups <- cut(1:nr, K, label = FALSE)
+  
+  # create a matrix that will contain the 2 x K training and test errors
+  errorMatrix <- matrix(ncol = 2, nrow = K)
+  
+  # loop through each split and calculate training and test errors
+  for (i in 1:K){
+    errorMatrix[i,] <- rmse(data.frame[groups != i,], data.frame[groups == i,])
+  }
+  
+  # return the matrix
+  return(errorMatrix)
+}
+
 #############################
 # methods to calculate loss functions
 
