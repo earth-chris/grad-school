@@ -1,0 +1,15 @@
+model evaluation cont'd
+
+-models often evaluated by two criteria 
+  -calibration - is the overall frequency of positive outcomes correct
+  -discrimination - how confident is the model
+-'expert political judgment' by tetlock sounds cool. apparently has a new book out now
+
+taylor diagrams
+-rmse and r-squared are closely related
+-centered rmse is like rmse, but you subtract the means of predicted and of observed from each term (predicted sample and observed sample) 
+-can make using 'plotrix' library
+
+roc curves
+-handles binary predictions 
+-rocr is the r library
