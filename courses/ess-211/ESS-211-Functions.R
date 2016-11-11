@@ -400,13 +400,13 @@ morris <- function(k, r, p, delta, par.mins, par.maxs, fun){
     B <- lower.tri(J) * 1 
     
     # set base vector
-    xstar <- base.samp(p, k) # BASE VECTOR
+    xstar <- base.samp(p, k)
     
     # set array with 1 or -1 in diagonal
     D <- array(0, dim = c(k, k)) 
     diag(D) <- 1.0 - 2 * (runif(k) < .5)
     
-    # set random permutation array
+    # set random permutation array with 1 in diagonal
     P <- array(0, dim = c(k, k))
     diag(P) <- 1
     P <- P[, sample(c(1:k), k, replace = FALSE)]
@@ -414,11 +414,14 @@ morris <- function(k, r, p, delta, par.mins, par.maxs, fun){
     
     # set vector for model outputs
     y <- numeric(length = (k +1))
-    for (i in 1:(k+1)){
-      y [i] <- fun(par.mins + par.range * Bstar [i,])
+    
+	# run model on each parameter permutation
+	for (i in 1:(k+1)){
+      y[i] <- fun(par.mins + par.range * Bstar [i,])
     } 
+	
+	# calculate effect based on which parameter changed
     for (i in 1:k){
-      # find which param changed up/down
       par.change <- Bstar[i+1,] - Bstar[i,]
       i2 <- which(par.change != 0)
       effects[i2, r.ind] <- (y[i +1] - y[i]) * (1 - 2 * (par.change[ i2 ] < 0))
