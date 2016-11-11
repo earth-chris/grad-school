@@ -168,7 +168,7 @@ ism.rainfall <- function(inputVector, lSeason=135){
   # the input vector should be a 5-element vector, in this order:
   # [1] pStrong  : precipitation in wet state (mm/day)
   # [2] pWeak    : precipitation in dry state (mm/day)
-  # [3[ tau      : memory length in time steps (days)
+  # [3] tau      : memory length in time steps (days)
   # [4] prMax    : maximum probability of either state.
   # [5] pInit    : initial probability of strong state.
   #                must be <= prMax

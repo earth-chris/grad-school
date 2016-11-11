@@ -86,6 +86,7 @@ delta <- p / (2 * (p - 1))
 
 # run the morris script and change the min/max values
 script.morris(par.mins, par.maxs, par.names, "Default parameters", k, r, p, delta, hmin)
+script.morris(par.mins-5, par.maxs+5, par.names, "Range expanded by 5, midpoint fixed", k, r, p, delta, hmin)
 script.morris(par.mins-5, par.maxs, par.names, "Min values - 5", k, r, p, delta, hmin)
 script.morris(par.mins, par.maxs+5, par.names, "Max values + 5", k, r, p, delta, hmin)
 script.morris(par.mins+5, par.maxs+5, par.names, "Min/max values + 5", k, r, p, delta, hmin)
@@ -109,7 +110,7 @@ delta <- 2/3
 ism.morris <- script.morris(par.mins, par.maxs, par.names, "Schewe-Levermann rainfall - Morris SA", k, r, p, delta, ism.modified)
 
 #############################
-# task 3 - running the variance-based global sa (vsa) on the bungee model
+# task 3 - running the variance-based global sa (VSA) on the bungee model
 
 # define original bungee parameters
 par.mins <- c(40, 67, 20)
@@ -135,5 +136,7 @@ pch <- rep(19, k)
 cols <- rainbow(k)
 
 # plot the results
-plot(bungee.vsa[1], bungee.vsa[2], pch = pch, main = title, col = cols)
+plot(bungee.vsa[[1]], bungee.vsa[[2]], pch = pch, main = title, col = cols, xlab = xlab, ylab = ylab)
 legend("topleft", legend = par.names, pch = pch, col = cols)
+
+# that's all, folks!
