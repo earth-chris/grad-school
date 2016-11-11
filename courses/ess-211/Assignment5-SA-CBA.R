@@ -1,58 +1,77 @@
 # ESS-211 assignment 5, due 11-11-16
 #  cba 11/2016
 
-#############################
-# below are the functions provided by the teaching group
+# set current working directory
+setwd("~/cba/aei-grad-school/courses/ess-211/")
 
-# define the linear oscillator equation for determining bungee height
-hmin <- function (x){
-  return(x[1] - 2 * x[2] * 9.8 / (1.5 * x[3]))
+# source the written functions
+source("ESS-211-Functions.R")
+
+#############################
+# set up cba-written functions used in this assignment 
+
+# to assess how mu.star and sigma change as a function of changing ranges and midpoints,
+#  we'll create a function and shift the min/max values a few times
+script.morris <- function(mins, maxs, names, title, k, r, p, delta, fun){
+  
+  # set midpoints for each parameter
+  par.mids <- 0.5 * (mins + maxs)
+  
+  # set n parameters
+  npars <- length(mins)
+  
+  # run morris method for the function
+  effects <- morris(k, r, p, delta, mins, maxs, fun)
+  
+  # calculate mean effect
+  mu <- apply(effects, 1, mean)
+  
+  # calculate sd effect
+  sigma <- apply(effects, 1, sd)
+  
+  # calculate mean absolute effect
+  mu.star <- apply(abs(effects), 1, mean)
+  
+  # set up some plotting params
+  pch <- rep(19, npars)
+  cols <- rainbow(npars)
+  
+  # plot the results
+  plot(mu.star, sigma, pch = pch, main = title, col = cols)
+  legend("topleft", legend = names, pch = pch, col = cols)
+  
+  # return the effects
+  return(list(mu, sigma, mu.star))
+}
+
+# i have to create a modified version of the indian summer monsoon model i wrote for assignment 2
+#  to include # years as a parameter
+ism.modified <- function(inputParameters, nYears=200){
+  
+  # create an output vector to save results
+  output <- rep(0, nYears)
+  
+  # run model over the total number of years
+  for (i in 1:nYears){
+    output[i] <- ism.rainfall(inputParameters)
+  }
+  
+  # return the output
+  return(output)
 }
 
 #############################
-# below are the exercises provided by the teaching group
+# task 1 - running the morris method with different parameter ranges
 
-###
-# first, local SA
+# define original bungee parameters to go +/- 10 on each of the parameters
+par.mins <- c(40, 67, 20)
+par.maxs <- c(60, 74, 40)
 
-# define bungee names and parameters
+# define the parameter names
 par.names <- c("Height", "Mass", "# Strands")
-par.mins <- c(40 , 67 , 20)
-par.maxs <- c(60 , 74 , 40)
-
-# define midpoints for parameters
-par.mids <- 0.5 * (par.mins + par.maxs)
 
 # set n parameters
-npars <- length (par.mins)
-
-# create array to hold results
-difs <- numeric(length = npars)
-
-# loop through each parameter set and
-for (par in 1:npars){
-
-  # create two input vectors to assign min/max values
-  input1 <- par.mids ; input2 <- par.mids
-  
-  # assign min value to first vector
-  input1[par] <- par.mins[par]
-  
-  # assign max value to second vector
-  input2[par] <- par.maxs[par]
-  
-  # compute differences between model outputs using different min/max vals
-  difs[par] = hmin(input2) - hmin(input1)
-}
-
-# plot the output
-barplot(difs, xlab = "Parameter", ylab = "Max - Min", names.arg = par.names)
-
-###
-# next, one-at-a-time global SA
-
-# define n parameters
-k <- npars
+k <- length(par.mins)
 
 # n times to compute effect for each parameter
 r <- 10
@@ -63,51 +82,25 @@ p <- 4
 # the increment to adjust parameter values by
 delta <- p / (2 * (p - 1))
 
-# define function to sample from set {0, 1/(p -1), ... 1}
-base.samp <- function (p , n){
-  
-  # limit to range of (0, 1-delta)
-  x <- (p - 1 - p / 2) * runif(n)
-  return(round(x) / (p -1))
-}
+# run the morris script and change the min/max values
+script.morris(par.mins, par.maxs, par.names, "Default parameters", k, r, p, delta, hmin)
+script.morris(par.mins-5, par.maxs, par.names, "Min values - 5", k, r, p, delta, hmin)
+script.morris(par.mins, par.maxs+5, par.names, "Max values + 5", k, r, p, delta, hmin)
+script.morris(par.mins+5, par.maxs+5, par.names, "Min/max values + 5", k, r, p, delta, hmin)
 
-# define range for parameters
-par.mins <- c(40, 67, 20)
-par.maxs <- c(60, 74, 40)
+#############################
+# task 2 - running sensitivity analysis on the indian summer monsoon model
 
-# create the morris function
-morris <- function(k, r, p, delta, par.mins, par.maxs, fun){
-  
-  # set the range for parameters
-  par.range <- par.maxs - par.mins
-  
-  # create an array to save the effects
-  effects <- array(dim = c(k, r))
-  
-  # loop through each computed effect
-  for (r.ind in 1:r){
-    J = array (1 , dim = c ( k +1 , k ) ) #AN ARRAY OF ONES
-    B = lower . tri ( J ) * 1 #A LOWER TRIANGULAR ARRAY OF ONES
-    xstar = base . samp (p , k ) # BASE VECTOR
-    D = array (0 , dim = c (k , k ) ) #AN ARRAY WITH EITHER 1 OR -1 IN DIAGONAL
-    diag ( D ) = 1.0 -2 * ( runif ( k ) < .5)
-    P = array (0 , dim = c (k , k ) ) #A RANDOM PERMUTATION ARRAY
-    diag ( P ) = 1
-    P = P [ , sample ( c (1: k ) ,k , replace = F ) ]
-    Bstar = ( t ( xstar * t ( J ) ) + ( delta / 2) * ((2 * B - J ) % * % D + J ) ) % * % P
-    y = numeric ( length =( k +1) ) # VECTOR TO HOLD MODEL OUTPUT
-    for ( i in 1:( k +1) ) y [ i ] = fun ( par . mins + par . range * Bstar [i ,] )
-    for ( i in 1: k ) {
-      par . change = Bstar [ i +1 ,] - Bstar [i ,] # FIND WHICH PARAMETER CHANGED AND WHETHER UP OR DOWN
-      i2 = which ( par . change ! = 0)
-      effects [ i2 , r . ind ] = ( y [ i +1] - y [ i ]) * (1 - 2 * ( par . change [ i2 ] < 0) )
-    }
-  }
-  return(effects) # RETURN THE k x r ARRAY OF COMPUTED EFFECTS
-}
-#NOW RUN THE MORRIS METHOD FOR hmin
-effects = morris (k ,r ,p , delta , par . mins , par . maxs , hmin )
-mu = apply ( effects ,1 , mean )
-sigma = apply ( effects ,1 , sd )
-mu . star = apply ( abs ( effects ) ,1 , mean )
-plot ( mu . star , sigma , pch = c ( " H " ," M " ," s " ) )
+# set names and ranges
+par.names <- c("Pstrong", "Pweak", "tau", "prmax", "P_init")
+par.mins <- c(8, 0, 14, .7, .65)
+par.maxs <- c(10, 2, 21, .9, .85)
+
+# set the morris parameters per assignment instructions
+k <- length(par.mins)
+p <- 4
+r <- 20
+delta <- 2/3
+
+# run the morris script
+script.morris(par.mins, par.maxs, par.names, "Schewe-Levermann rainfall SA", k, r, p, delta, ism.modified)
