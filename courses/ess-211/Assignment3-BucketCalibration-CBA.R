@@ -57,7 +57,7 @@ for (i in seq(1,n_searches)){
 
 # plot the outputs to examine
 par(mfcol = c(1,3))
-hist(opt_matrix[,1], breaks = seq(0,200, by=20), xlab = "Retrieved value of full.bucket", main = "full.bucket", col='light blue', las=1)
+hist(opt_matrix[,1], breaks = seq(0,200, by=20), xlab = "Retrieved value of full.bucket", main = "full.bucket", col='orange', las=1)
 hist(opt_matrix[,2], breaks = seq(0,0.5, by=0.05), xlab = "Retrieved value of min.infilt", main = "min.infilt", col='light green', las=1)
 hist(opt_matrix[,3], breaks = seq(0,0.5, by=0.05), xlab = "Retrieved value of wilt.point", main = "wilt.point", col='salmon', las=1)
 
