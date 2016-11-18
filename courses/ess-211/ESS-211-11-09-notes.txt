@@ -1,0 +1,17 @@
+post election - model performance
+
+error sources
+-input error (data bad)
+-model error
+  -structural / conceptual error (e.g. equations)
+  -parameter error
+-irreducible error (e.g. things you don't consider)
+
+-model performance difficult to assess in a comparison situation where you can have different models with different parameters but get the same answer or similar agreement. difficult to assess without understanding how good your input data are.
+
+model comparison takeaways
+-test as much as possible with as many types of data as possible
+-plot observed vs predicted
+-use many metrics for evaluation, test against randomized references, other 'true' data
+
+-will be talking about prediction uncertainty, reducing uncertainty with multi-model approaches, hindcasting, and applications for prediction

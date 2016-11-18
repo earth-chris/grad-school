@@ -1,0 +1,23 @@
+model evaluation
+
+will review:
+-finding data to evaluate a model
+-metrics of model performance based on data
+-comparing models to each other
+
+finding data
+-find as much as possible, with data that was in no way involved with the model tuning
+
+metrics of model performance
+-highlighting importance of using observations vs predictions (on x and y axis) because the relationship of predicted y is necessarily 1-to-1 linked to observed y (if there is no bias)
+-just kidding - he suggests using predicted on the x axis and observed on y axis
+-slope of a regression is a function of the variance in x and y divided by variance in x. so variance in y does not affect 
+-r^2 is a simple correlation metric. sum of residuals of observed samples and mean observations, and residuals of predicted samples and mean predictions, all divided by variance
+-r^2 imperfect
+-modeling efficiency is 1 - (sum squares about 1:1 line)/(corrected sum squares of y)
+-EF = 1 - (sum(y0-yp)^2) / (sum(y0-mean(y0))^2)
+-negative model efficiency means you are doing worse than just guessing the mean
+-model skill an additional metric to use instead of efficiency. efficiency is dependent upon the mean for assessment. skill can use something like a distribution of data
+-reference is often a random guess, average value, or previous knowledge
+-heidke skill score is one way to assess e.g. classification error based on estimated probability
+-brier score is another metric - looks at difference between prediction probability and actual events occurring (in binary, 0 or 1)

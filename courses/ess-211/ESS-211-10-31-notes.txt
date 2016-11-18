@@ -1,0 +1,29 @@
+Interim report due monday, 11/7
+Read carbon cycle paper by wednesday
+
+Sensitivity Analysis
+-read up on screening method
+
+Morris' method
+-Tries to deal with nonlinearity and interactions
+-interactions and nonlinearities slightly different 
+	-nonlinearity means effect of the value depends on the value itself (e.g. slope changes based on position)
+	-interactions means effect of one value depends on other values
+-can think of as individually randomized O-A-T experiments
+-elementary effect is a function evaluated for n factors, then evaluate it again by changing value by delta, then dividing the difference between those two evaluations by delta
+-how big should delta be?
+-delta is a fixed value that should stay consistent throughout determining the elementary effect. effectively the 'jump size' between 
+-pdf = probability distribution function
+-cdf = continuous distribution function
+-change your parameter values by delta in one dimension, then again by a diff. delta in a second dimension ... 
+-do this k dimensions to understand the elementary effects on each dimension
+-repeat this r times across the distribution of your data to effectively sample the k-dimensional parameter distribution space
+-total # runs = (k+1)*r
+-can use average, or average absolute value, to measure factor importance, and standard deviation to estimate the nonlinearity of effect.
+
+Variance based methods
+-doesn't fix how you step through the model - more based on random samples
+-total uncertainty in y is measured as var(y)
+-fix the value of one parameter and change every other parameter
+	-then, measure the change in y variance when just that value is fixed
+	-

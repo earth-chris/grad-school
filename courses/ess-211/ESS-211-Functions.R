@@ -168,7 +168,7 @@ ism.rainfall <- function(inputVector, lSeason=135){
   # the input vector should be a 5-element vector, in this order:
   # [1] pStrong  : precipitation in wet state (mm/day)
   # [2] pWeak    : precipitation in dry state (mm/day)
-  # [3[ tau      : memory length in time steps (days)
+  # [3] tau      : memory length in time steps (days)
   # [4] prMax    : maximum probability of either state.
   # [5] pInit    : initial probability of strong state.
   #                must be <= prMax
@@ -326,6 +326,175 @@ bucket3 = function(pars,P,PET) {
 }
 
 #############################
+# functions provided by teaching group for assignment 4
+
+# calculate cross validation rmse
+rmse <- function(train, test) {
+  
+  # perform a linear regression
+  fit <- lm(y~., data = train) 
+  
+  # calculate rmse of training fit
+  train.err <- sqrt(mean((fit$resid)^2))
+  
+  # calculate the rmse of training vs test data
+  test.err = sqrt(mean((test$y - predict(fit, test))^2)) #RMS CV RESIDUALS
+  
+  # return the training and test error
+  return(c(train.err, test.err))
+}
+
+# and one written by cba for assignment 4
+# a function to calculate rmse for k splits
+cv.err <- function(data.frame, K){
+  # split the data into ~equal chunks
+  #  first, find the length of the data frame to split
+  nr <- nrow(data.frame)
+  
+  # split the data using the cut funtion
+  groups <- cut(1:nr, K, label = FALSE)
+  
+  # create a matrix that will contain the 2 x K training and test errors
+  errorMatrix <- matrix(ncol = 2, nrow = K)
+  
+  # loop through each split and calculate training and test errors
+  for (i in 1:K){
+    errorMatrix[i,] <- rmse(data.frame[groups != i,], data.frame[groups == i,])
+  }
+  
+  # return the matrix
+  return(errorMatrix)
+}
+
+#############################
+# functions provided by the teaching group for assignment 5
+
+# define the linear oscillator equation for determining bungee height
+hmin <- function (x){
+  return(x[1] - 2 * x[2] * 9.8 / (1.5 * x[3]))
+}
+
+# define function to sample from set {0, 1/(p -1), ... 1}
+base.samp <- function(p , n){
+  # limit to range of (0, 1-delta)
+  x <- (p - 1 - p / 2) * runif(n)
+  return(round(x) / (p -1))
+}
+
+# define the morris function
+morris <- function(k, r, p, delta, par.mins, par.maxs, fun){
+  
+  # set the range for parameters
+  par.range <- par.maxs - par.mins
+  
+  # create an array to save the effects
+  effects <- array(dim = c(k, r))
+  
+  # loop through each computed effect
+  for (r.ind in 1:r){
+    
+    # create an array of ones
+    J <- array(1, dim = c(k +1 , k)) 
+    
+    # set a lower triangular array of ones
+    B <- lower.tri(J) * 1 
+    
+    # set base vector
+    xstar <- base.samp(p, k)
+    
+    # set array with 1 or -1 in diagonal
+    D <- array(0, dim = c(k, k)) 
+    diag(D) <- 1.0 - 2 * (runif(k) < .5)
+    
+    # set random permutation array with 1 in diagonal
+    P <- array(0, dim = c(k, k))
+    diag(P) <- 1
+    P <- P[, sample(c(1:k), k, replace = FALSE)]
+    Bstar <- (t(xstar * t(J)) + (delta / 2) * ((2*B - J)%*%D + J)) %*% P
+    
+    # set vector for model outputs
+    y <- numeric(length = (k +1))
+    
+	# run model on each parameter permutation
+	for (i in 1:(k+1)){
+      y[i] <- fun(par.mins + par.range * Bstar [i,])
+    } 
+	
+	# calculate effect based on which parameter changed
+    for (i in 1:k){
+      par.change <- Bstar[i+1,] - Bstar[i,]
+      i2 <- which(par.change != 0)
+      effects[i2, r.ind] <- (y[i +1] - y[i]) * (1 - 2 * (par.change[ i2 ] < 0))
+    }
+  }
+  
+  # return k by r array of computed effects
+  return(effects) 
+}
+
+# define variance-based global sensitivity analysis (vsa)
+vsa <- function(fun, par.mins, par.maxs, nrun){
+  
+  # set ranges
+  par.range <- par.maxs - par.mins
+  k <- length(par.range)
+  
+  # create U(0,1) n by k matrix
+  M <- array(runif(nrun * k), dim = c(nrun, k))
+  
+  # transform to fit range of each parameter
+  for (i in 1:k) {
+    M[, i] <- M[, i] * par.range[i] + par.mins[i] 
+  }
+  
+  # make a different input matrix, M2, the same way
+  M2 <- array(runif(nrun * k), dim = c(nrun, k))
+  for (i in 1:k) {
+    M2[, i] = M2[, i] * par.range[i] + par.mins[i] 
+  }
+  
+  # make K different matrices, where in the jth matrix, all parameters are taken from M2 except parameter j is taken from M
+  NJ.list <- list()
+  for (j in 1:k){
+    temp <- M2
+    temp[, j] <- M[, j]
+    NJ.list[[j]] <- temp
+  }
+  
+  # compute the first-order effects (S) of factor J, we need to compute the values UJ, as discussed in class
+  S <- numeric(length = k)
+  ST <- numeric(length = k)
+  y1 <- y2 <- y3 <- numeric(length = nrun)
+  for (i in 1:nrun){
+    y1[i] <- fun(M[i,])
+    y2[i] <- fun(M2[i,])
+  }
+  
+  # compute the expected value (EY) and total variance (VY) of Y, for which we will use M2
+  EY <- mean(y1)
+  
+  # will estimate EY^2 using both M and M2
+  VY <- sum(y1 * y1) / (nrun - 1) - EY^2
+  
+  for (j in 1:k){
+    NJ <- NJ.list[[j]]
+    for (i in 1:nrun) {
+      y3[i] = fun(NJ[i,])
+    }
+    
+    # everything but factor j resampled
+    UJ <- sum(y1 * y3) / (nrun - 1)
+    
+    # only factor j resampled
+    UJ2 = sum(y2 * y3) / (nrun - 1)
+    
+    S[j] = (UJ - EY^2) / VY
+    ST[j] = 1.0 - (UJ2 - EY^2) / VY
+  }
+  return(list(S,ST))
+}
+
+#############################
 # methods to calculate loss functions
 
 # root mean-squared error
@@ -346,4 +515,9 @@ minfunc <- function(pars, loss, model, y, P, PET){
 mode <- function(x) {
   xunique <- unique(x)
   xunique[which.max(tabulate(match(x, xunique)))]
+}
+
+# create a method to calculate the standard error of a vector
+se <- function(x) {
+  sd(x) / sqrt(length(x))
 }
