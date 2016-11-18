@@ -1,0 +1,13 @@
+multi model ensembles
+
+-difficult to assess multi-model ensemble uncertainty, or figure out best model to select
+-a good approach seems to be finding an aspect of model sensitivity that relates strongly to desired predicted outcome, and see if you can constrain model using historical data
+
+exploratory modeling
+agent-based modeling
+-simulating interactions between individuals using simple rules
+-useful for understanding emergent behaviors without explicitly stating those behaviors as parameters or rules
+
+perfect model studies
+-'perfect' in terms of having 'perfectly' simulated data, not that the model is perfect.
+-useful when you don't have data, or when you want to know what exact response will be under a perfect data scenario.
