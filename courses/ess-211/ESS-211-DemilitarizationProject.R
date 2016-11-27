@@ -19,8 +19,10 @@ demographics <- read.csv('demilitarization_project/Demographics.csv', row.names 
 yearly <- read.csv('demilitarization_project/YearlyData.csv', header = TRUE)
 
 # set parameter and variable values we'll use later in modeling
-finalYear = 2050
-startYear = max(yearly$Year) + 1
+endModelYear <- 2050
+startModelYear <- max(yearly$Year) + 1
+startYear <- min(yearly$Year)
+endYear <- max(yearly$Year)
 
 # set plotting parameters
 colDem <- add.alpha("Blue", 0.6)
@@ -83,7 +85,7 @@ mtext(ylabMil, side = 4, line = 3)
 #  and NAs for data we need to model
 
 # loop through each year and append no-data to the data frames for years we will model
-for (year in seq(startYear, finalYear)){
+for (year in seq(startModelYear, endModelYear)){
   
   # create the NA vectors to append
   yearVec <- c(year, rep(NA, ncol(yearly) - 1))
@@ -103,16 +105,20 @@ for (year in seq(startYear, finalYear)){
 #  the policies set by the federal reserve regarding growth of the money supply.
 #  growth in money supply does not necessarily mean growth in fed spending, but it historically has.
 fitYears <- which(yearly$FedSpending.BUSD > 0)
-fedSpending.exponential <- growth.exponential(x = yearly$Year[fitYears], y = yearly$FedSpending.BUSD[fitYears], degree = 2)
-fedSpending.predicted.exp <- predict(fedSpending.exponential, x = yearly$Year)
+fedSpending.exponential <- lm(FedSpending.BUSD ~ poly(Year, degree = 2), data = yearly[fitYears,])
+fedSpending.predicted.exp <- predict(fedSpending.exponential, data.frame(Year=yearly[,'Year']))
 
 # plot the output
 ylab <- "Total Federal Spending (B $USD)"
 xlab <- "Year"
 title <- "Actual and Modeled (exponential) Federal Spending"
 legend <- c("Actual Federal Spending", "Modeled Federal Spending")
+ylim <- c(min(yearly$FedSpending.BUSD, fedSpending.predicted.exp, na.rm = TRUE), 
+          max(yearly$FedSpending.BUSD, fedSpending.predicted.exp, na.rm = TRUE))
 lwd <- c(3, 3)
-plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1])
+plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim)
 par(new = TRUE)
-plot(yearly$Year, fedSpending.predicted.exp, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], axes = FALSE)
+plot(yearly$Year, fedSpending.predicted.exp, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred), lwd = lwd)
+
+# next, we'll look at what logistic growth 
