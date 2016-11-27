@@ -521,3 +521,13 @@ mode <- function(x) {
 se <- function(x) {
   sd(x) / sqrt(length(x))
 }
+
+#############################
+# plotting utilities
+
+# add an alpha value to a colour (from https://gist.githubusercontent.com/mages/5339689/raw/2aaa482dfbbecbfcb726525a3d81661f9d802a8e/add.alpha.R)
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2, function(x) rgb(x[1], x[2], x[3], alpha=alpha))  
+}
