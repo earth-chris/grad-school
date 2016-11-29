@@ -17,6 +17,10 @@ growth.exponential <- function(dframe, degree=2){
   model <- lm(FedSpending.BUSD ~ poly(Year, degree = degree), data = dframe)
   return(model)
 }
+growth.exponential2 <- function(x, y, degree=2){
+  model <- lm(y ~ poly(x, degree = degree))
+  return(model)
+}
 
 # set up a function for logistic growth
 #  based on the the logistic growth function:
@@ -39,6 +43,23 @@ growth.logistic <- function(dframe, phi1, phiIndex){
   model <- nls(FedSpending.BUSD ~ (phi1 / (1 + exp(-(phi2 + phi3 * Year)))), 
                start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3),
                data = dframe)
+  
+  return(model)
+}
+growth.logistic2 <- function(x, y, phi1, phiIndex){
+  # we're going to use the index provided to insert the phi1 value
+  #  so the logistic growth fits to the asymptote
+  y[phiIndex:length(y)] <- phi1
+  
+  # we're going to have to guess the initial parameters for 
+  #  phi2 and phi3, which we will do using a logit transform
+  coefs <- coef(lm(logit(y / phi1) ~ x))
+  phi2 <- coefs[1]
+  phi3 <- coefs[2]
+  
+  # then we'll perform a non-linear least-squares fit to the data
+  model <- nls(y ~ (phi1 / (1 + exp(-(phi2 + phi3 * x)))), 
+               start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3))
   
   return(model)
 }
@@ -128,14 +149,50 @@ unemployment.framework2 <- function(dframe, sd){
   unemployment.years <- which(dframe$UnemploymentRate < 1.)
   unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
   
+  # set x and y vars
+  x <- dframe$Year[unemployment.years]
+  y <- dframe$UnemploymentRate[unemployment.years]
+  
   # find trendline in the unemployment data
-  linearModel <- lm(dframe$UnemploymentRate[unemployment.years] ~ yearly$Year[unemployment.years])
-  coefs <- coef(linearModel)
+  linearModel <- lm(y ~ x)
   
   # generate some noise
-  noise <- rnorm(sum(unemployment.yearsToModel), sd = sd)
+  noise <- rnorm(nrow(dframe), sd = sd)
   
-  # add the noise to the linear trendline
-  framework2 <- dframe$UnemploymentRate
-  framework2[unemployment.yearsToModel] <- (yearly$Year[unemployment.yearsToModel] * coefs[2] + coefs[1]) + noise
+  # apply the fit to the data and add noise
+  predicted <- predict(linearModel, data.frame(x = dframe$Year, y = dframe$UnemploymentRate))
+  framework2 <- predicted + noise
+  return(framework2)
 }
+
+# framework 3 
+#  fits a sin curve to unemployment data
+#  from this stack exchange: http://stats.stackexchange.com/questions/60994/fit-a-sinusoidal-term-to-data
+unemployment.framework3 <- function(dframe, sd, per = NA){
+  
+  # get basic unemployment info
+  unemployment.years <- which(dframe$UnemploymentRate < 1.)
+  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
+  
+  # set x and y vars
+  x <- dframe$Year[unemployment.years]
+  y <- dframe$UnemploymentRate[unemployment.years]
+  
+  # calculate the spectrum and period of the data, if not set
+  ssp <- spectrum(y, plot=FALSE)
+  if (is.na(per)){
+    per <- 1 / ssp$freq[ssp$spec == max(ssp$spec)]
+  }
+  
+  # least squares fit the data
+  linearModel <- lm(y ~ sin(2 * pi / per * x) + cos(2 * pi / per * x))
+  
+  # generate some noise
+  noise <- rnorm(nrow(dframe), sd = sd)
+  
+  # apply the fit to the data and add noise
+  predicted <- predict(linearModel, data.frame(x = dframe$Year, y = dframe$UnemploymentRate))
+  framework3 <- predicted + noise
+  return(framework3)
+}
+
