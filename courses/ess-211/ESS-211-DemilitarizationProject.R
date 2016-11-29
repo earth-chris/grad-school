@@ -201,10 +201,14 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 # first, exponential growth
 vetSpending.exponential <- vetGrowth.exponential(yearly[fitYears,], degree = 2)
 vetSpending.predicted.exp <- predict(vetSpending.exponential, yearly)
+vetSpending.exponential2 <- growth.exponential2(yearly$Year[fitYears], yearly$VeteranSpending.BUSD[fitYears], degree = 2)
+vetSpending.predicted.exp2 <- predict(vetSpending.exponential2, data.frame(x = yearly$Year))
 
 # next, logistic growth
 vetSpending.logistic <- vetGrowth.logistic(yearly, maxSpending.vet, nrow(yearly))
 vetSpending.predicted.log <- predict(vetSpending.logistic, yearly)
+vetSpending.logistic2 <- growth.logistic2(yearly$Year, yearly$VeteranSpending.BUSD, maxSpending.vet, nrow(yearly))
+vetSpending.predicted.log2 <- predict(vetSpending.logistic2, data.frame(x = yearly$Year))
 
 # get rmse for each
 rmse.vetSpending.exp <- sqrt(mean(residuals(vetSpending.exponential)^2))
@@ -251,3 +255,6 @@ framework1 <- unemployment.framework1(yearly, unemployment.sd)
 
 # run framework 2
 framework2 <- unemployment.framework2(yearly, unemployment.sd)
+
+# run framework 3
+framework3 <- unemployment.framework3(yearly, unemployment.sd)
