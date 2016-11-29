@@ -13,11 +13,7 @@ library(car)
 # set up a function for exponential growth
 #  based on fitting a polynomial using R's built in functions
 #  returns a model
-growth.exponential <- function(dframe, degree=2){
-  model <- lm(FedSpending.BUSD ~ poly(Year, degree = degree), data = dframe)
-  return(model)
-}
-growth.exponential2 <- function(x, y, degree=2){
+growth.exponential <- function(x, y, degree=2){
   model <- lm(y ~ poly(x, degree = degree))
   return(model)
 }
@@ -28,25 +24,7 @@ growth.exponential2 <- function(x, y, degree=2){
 #  where y is the population, phi1 is the asymptote (or carrying capacity),
 #  i don't remember phi2, phi3 is the growth parameter, and 
 #  x is the response variable, in this case, time
-growth.logistic <- function(dframe, phi1, phiIndex){
-  # we're going to use the index provided to insert the phi1 value
-  #  so the logistic growth fits to the asymptote
-  dframe$FedSpending.BUSD[phiIndex:nrow(dframe)] <- phi1
-  
-  # we're going to have to guess the initial parameters for 
-  #  phi2 and phi3, which we will do using a logit transform
-  coefs <- coef(lm(logit(FedSpending.BUSD / phi1) ~ Year, data = dframe))
-  phi2 <- coefs[1]
-  phi3 <- coefs[2]
-  
-  # then we'll perform a non-linear least-squares fit to the data
-  model <- nls(FedSpending.BUSD ~ (phi1 / (1 + exp(-(phi2 + phi3 * Year)))), 
-               start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3),
-               data = dframe)
-  
-  return(model)
-}
-growth.logistic2 <- function(x, y, phi1, phiIndex){
+growth.logistic <- function(x, y, phi1, phiIndex){
   # we're going to use the index provided to insert the phi1 value
   #  so the logistic growth fits to the asymptote
   y[phiIndex:length(y)] <- phi1
@@ -65,60 +43,6 @@ growth.logistic2 <- function(x, y, phi1, phiIndex){
 }
 
 #############################
-# we're going to create similar models, exponential and logistic,
-#  to model the growth in military spending
-
-# first, exponential spending
-milGrowth.exponential <- function(dframe, degree=2){
-  model <- lm(MilitarySpending.BUSD ~ poly(Year, degree = degree), data = dframe)
-  return(model)
-}
-
-# then, logistic spending
-milGrowth.logistic <- function(dframe, phi1, phiIndex){
-  dframe$MilitarySpending.BUSD[phiIndex:nrow(dframe)] <- phi1
-  
-  # we're going to have to guess the initial parameters for 
-  #  phi2 and phi3, which we will do using a logit transform
-  coefs <- coef(lm(logit(MilitarySpending.BUSD / phi1) ~ Year, data = dframe))
-  phi2 <- coefs[1]
-  phi3 <- coefs[2]
-  
-  # then we'll perform a non-linear least-squares fit to the data
-  model <- nls(MilitarySpending.BUSD ~ (phi1 / (1 + exp(-(phi2 + phi3 * Year)))), 
-               start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3),
-               data = dframe)
-  
-  return(model)
-}
-
-#############################
-# now, to model the growth in veteran spending
-# first, exponential spending
-vetGrowth.exponential <- function(dframe, degree=2){
-  model <- lm(VeteranSpending.BUSD ~ poly(Year, degree = degree), data = dframe)
-  return(model)
-}
-
-# then, logistic spending
-vetGrowth.logistic <- function(dframe, phi1, phiIndex){
-  dframe$VeteranSpending.BUSD[phiIndex:nrow(dframe)] <- phi1
-  
-  # we're going to have to guess the initial parameters for 
-  #  phi2 and phi3, which we will do using a logit transform
-  coefs <- coef(lm(logit(VeteranSpending.BUSD / phi1) ~ Year, data = dframe))
-  phi2 <- coefs[1]
-  phi3 <- coefs[2]
-  
-  # then we'll perform a non-linear least-squares fit to the data
-  model <- nls(VeteranSpending.BUSD ~ (phi1 / (1 + exp(-(phi2 + phi3 * Year)))), 
-               start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3),
-               data = dframe)
-  
-  return(model)
-}
-
-#############################
 # unemployment modeling
 
 # framework 1
@@ -128,15 +52,13 @@ unemployment.framework1 <- function(dframe, sd){
   
   # get basic unemployment info
   unemployment.years <- which(dframe$UnemploymentRate < 1.)
-  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
   unemployment.mean <- mean(dframe$UnemploymentRate[unemployment.years])
   
   # generate some noise
-  noise <- rnorm(sum(unemployment.yearsToModel), sd = sd)
+  noise <- rnorm(nrow(dframe), sd = sd)
   
   # add the noise to the mean
-  framework1 <- dframe$UnemploymentRate
-  framework1[unemployment.yearsToModel] = unemployment.mean + noise
+  framework1 = unemployment.mean + noise
   return(framework1)
 }
 
@@ -147,7 +69,6 @@ unemployment.framework2 <- function(dframe, sd){
   
   # get basic unemployment info
   unemployment.years <- which(dframe$UnemploymentRate < 1.)
-  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
   
   # set x and y vars
   x <- dframe$Year[unemployment.years]
@@ -172,7 +93,6 @@ unemployment.framework3 <- function(dframe, sd, per = NA){
   
   # get basic unemployment info
   unemployment.years <- which(dframe$UnemploymentRate < 1.)
-  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
   
   # set x and y vars
   x <- dframe$Year[unemployment.years]

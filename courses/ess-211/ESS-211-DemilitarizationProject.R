@@ -116,8 +116,8 @@ fitYears <- which(yearly$FedSpending.BUSD > 0)
 #  the exponential growth model is our null model because exponential growth underlies
 #  the policies set by the federal reserve regarding growth of the money supply.
 #  growth in money supply does not necessarily mean growth in fed spending, but it historically has.
-fedSpending.exponential <- growth.exponential(yearly[fitYears,], degree = 2)
-fedSpending.predicted.exp <- predict(fedSpending.exponential, yearly)
+fedSpending.exponential <- growth.exponential(yearly$Year[fitYears], yearly$FedSpending.BUSD[fitYears], degree = 2)
+fedSpending.predicted.exp <- predict(fedSpending.exponential, data.frame(x = yearly$Year))
 
 # calculate rmse for exponential growth
 rmse.fedSpending.exp <- sqrt(mean(residuals(fedSpending.exponential)^2))
@@ -139,8 +139,8 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 #  we're going to set the ceiling of federal spending to that
 #  specified in the parameters above, suggesting that at the final year we model,
 #  we will be spending the max amount. we'll change this as we do sensitivity analysis, etc.
-fedSpending.logistic <- growth.logistic(yearly, maxSpending.fed, nrow(yearly))
-fedSpending.predicted.log <- predict(fedSpending.logistic, yearly)
+fedSpending.logistic <- growth.logistic(yearly$Year, yearly$FedSpending.BUSD, maxSpending.fed, nrow(yearly))
+fedSpending.predicted.log <- predict(fedSpending.logistic, data.frame(x = yearly$Year))
 
 # calculate rmse for logistic growth
 rmse.fedSpending.log <- sqrt(mean(residuals(fedSpending.logistic)^2))
@@ -162,12 +162,12 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 # compare exponential vs logistic growth for military spending
 
 # first, exponential growth
-milSpending.exponential <- milGrowth.exponential(yearly[fitYears,], degree = 2)
-milSpending.predicted.exp <- predict(milSpending.exponential, yearly)
+milSpending.exponential <- growth.exponential(yearly$Year[fitYears], yearly$MilitarySpending.BUSD[fitYears], degree = 2)
+milSpending.predicted.exp <- predict(milSpending.exponential, data.frame(x = yearly$Year))
 
 # next, logistic growth
-milSpending.logistic <- milGrowth.logistic(yearly, maxSpending.mil, nrow(yearly))
-milSpending.predicted.log <- predict(milSpending.logistic, yearly)
+milSpending.logistic <- growth.logistic(yearly$Year, yearly$MilitarySpending.BUSD, maxSpending.mil, nrow(yearly))
+milSpending.predicted.log <- predict(milSpending.logistic, data.frame(x = yearly$Year))
 
 # get rmse for each
 rmse.milSpending.exp <- sqrt(mean(residuals(milSpending.exponential)^2))
@@ -199,16 +199,12 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 # compare exponential vs logistic growth for veteran spending
 
 # first, exponential growth
-vetSpending.exponential <- vetGrowth.exponential(yearly[fitYears,], degree = 2)
-vetSpending.predicted.exp <- predict(vetSpending.exponential, yearly)
-vetSpending.exponential2 <- growth.exponential2(yearly$Year[fitYears], yearly$VeteranSpending.BUSD[fitYears], degree = 2)
-vetSpending.predicted.exp2 <- predict(vetSpending.exponential2, data.frame(x = yearly$Year))
+vetSpending.exponential <- growth.exponential(yearly$Year[fitYears], yearly$VeteranSpending.BUSD[fitYears], degree = 2)
+vetSpending.predicted.exp <- predict(vetSpending.exponential, data.frame(x = yearly$Year))
 
 # next, logistic growth
-vetSpending.logistic <- vetGrowth.logistic(yearly, maxSpending.vet, nrow(yearly))
-vetSpending.predicted.log <- predict(vetSpending.logistic, yearly)
-vetSpending.logistic2 <- growth.logistic2(yearly$Year, yearly$VeteranSpending.BUSD, maxSpending.vet, nrow(yearly))
-vetSpending.predicted.log2 <- predict(vetSpending.logistic2, data.frame(x = yearly$Year))
+vetSpending.logistic <- growth.logistic(yearly$Year, yearly$VeteranSpending.BUSD, maxSpending.vet, nrow(yearly))
+vetSpending.predicted.log <- predict(vetSpending.logistic, data.frame(x = yearly$Year))
 
 # get rmse for each
 rmse.vetSpending.exp <- sqrt(mean(residuals(vetSpending.exponential)^2))
@@ -247,6 +243,8 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 #  3) fitting a sin curve to historical unemployment and adding noise based on a normal distribution.
 
 # get basic unemployment data
+unemployment.years <- which(yearly$UnemploymentRate < 1.)
+unemployment.yearsToModel <- is.na(yearly$UnemploymentRate)
 unemployment.mean <- mean(yearly$UnemploymentRate[unemployment.years])
 unemployment.sd <- sd(yearly$UnemploymentRate[unemployment.years])
 
