@@ -8,7 +8,7 @@
 library(car)
 
 #############################
-# functions for modeling federal spending
+# first, functions for modeling federal spending
 
 # set up a function for exponential growth
 #  based on fitting a polynomial using R's built in functions
@@ -69,4 +69,73 @@ milGrowth.logistic <- function(dframe, phi1, phiIndex){
                data = dframe)
   
   return(model)
+}
+
+#############################
+# now, to model the growth in veteran spending
+# first, exponential spending
+vetGrowth.exponential <- function(dframe, degree=2){
+  model <- lm(VeteranSpending.BUSD ~ poly(Year, degree = degree), data = dframe)
+  return(model)
+}
+
+# then, logistic spending
+vetGrowth.logistic <- function(dframe, phi1, phiIndex){
+  dframe$VeteranSpending.BUSD[phiIndex:nrow(dframe)] <- phi1
+  
+  # we're going to have to guess the initial parameters for 
+  #  phi2 and phi3, which we will do using a logit transform
+  coefs <- coef(lm(logit(VeteranSpending.BUSD / phi1) ~ Year, data = dframe))
+  phi2 <- coefs[1]
+  phi3 <- coefs[2]
+  
+  # then we'll perform a non-linear least-squares fit to the data
+  model <- nls(VeteranSpending.BUSD ~ (phi1 / (1 + exp(-(phi2 + phi3 * Year)))), 
+               start = list(phi1 = phi1, phi2 = phi2, phi3 = phi3),
+               data = dframe)
+  
+  return(model)
+}
+
+#############################
+# unemployment modeling
+
+# framework 1
+#  finds the mean of the unemployment data, then adds normally distributed noise based on the 
+#  standard deviation provided
+unemployment.framework1 <- function(dframe, sd){
+  
+  # get basic unemployment info
+  unemployment.years <- which(dframe$UnemploymentRate < 1.)
+  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
+  unemployment.mean <- mean(dframe$UnemploymentRate[unemployment.years])
+  
+  # generate some noise
+  noise <- rnorm(sum(unemployment.yearsToModel), sd = sd)
+  
+  # add the noise to the mean
+  framework1 <- dframe$UnemploymentRate
+  framework1[unemployment.yearsToModel] = unemployment.mean + noise
+  return(framework1)
+}
+
+# framework 2
+#  finds the trendline of the unemployment data, then adds normally distributed noise
+#  based on the standard deviation provided
+unemployment.framework2 <- function(dframe, sd){
+  
+  # get basic unemployment info
+  unemployment.years <- which(dframe$UnemploymentRate < 1.)
+  unemployment.yearsToModel <- is.na(dframe$UnemploymentRate)
+  
+  # find trendline in the unemployment data
+  linearModel <- lm(dframe$UnemploymentRate[unemployment.years] ~ yearly$Year[unemployment.years])
+  coefs <- coef(linearModel)
+  
+  # generate some noise
+  noise <- rnorm(sum(unemployment.yearsToModel), sd = sd)
+  
+  # add the noise to the linear trendline
+  framework2 <- dframe$UnemploymentRate
+  framework2[unemployment.yearsToModel] <- (yearly$Year[unemployment.yearsToModel] * coefs[2] + coefs[1]) + noise
 }
