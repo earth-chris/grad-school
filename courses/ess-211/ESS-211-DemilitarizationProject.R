@@ -7,7 +7,7 @@
 # set up the environment
 
 # set working directory
-setwd("~/src/aei-grad-school/courses/ess-211/")
+setwd("~/cba/aei-grad-school/courses/ess-211/")
 
 # load ESS-211 functions
 source("ESS-211-Functions.R")

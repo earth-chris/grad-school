@@ -10,13 +10,35 @@ library(car)
 #############################
 # first, functions for modeling federal spending
 
-# set up a function for exponential growth
+# set up a function for polynomial growth
 #  based on fitting a polynomial using R's built in functions
 #  returns a model
-growth.exponential <- function(x, y, degree=2){
+growth.polynomial <- function(x, y, degree=2){
   model <- lm(y ~ poly(x, degree = degree))
   return(model)
 }
+
+# set up a function for exponential growth using
+#  the p = p0 * e ^ r*t model
+growth.exponential <- function(y0, r, t){
+  y <- y0 * exp(r * t)
+  return(y)
+}
+
+# set up function to derive the growth rate from data
+growth.calc.r <- function(y0, y, t){
+  r <- ln(y0 / y) / t
+}
+
+# set up a loss function to find best fit of r
+growth.minfunc <- function(lossfunc, model, y, y0, r, t){
+  lossfunc(y, model(y0, r, t))
+}
+
+calibrate.growth <- function(years, population,){
+  
+}
+
 
 # set up a function for logistic growth
 #  based on the the logistic growth function:
