@@ -25,6 +25,17 @@ growth.exponential <- function(y0, r, t){
   return(y)
 }
 
+# and a function to apply it
+growth.exponential.apply <- function(y0, r, nYears){
+  
+  # create an output storage vector
+  y <- rep(0, nYears)
+  for (i in 1:nYears){
+    y[i] <- growth.exponential(y0, r, i)
+  }
+  return(y)
+}
+
 # set up function to derive the growth rate from data
 growth.calc.r <- function(y0, y, t){
   r <- log(y / y0) / t
@@ -32,14 +43,14 @@ growth.calc.r <- function(y0, y, t){
 }
 
 # set up a loss function to find best fit of r
-growth.minfunc <- function(lossfunc, model, y, y0, r, t){
-  lossfunc(y, model(y0, r, t))
+growth.minfunc <- function(lossfunc, model, y, y0, r, nYears){
+  lossfunc(y, model(y0, r, nYears))
 }
 
 # set up a function to calibrate exponential growth by looking at all
 #  growth rates based on each starting point and each year
 #  to get the range of growth rates to fit with
-calibrate.growth <- function(years, population,){
+calibrate.growth <- function(years, population){
   
   # determine number of starting years we'll use
   nYears <- length(years) - 1
@@ -67,8 +78,8 @@ calibrate.growth <- function(years, population,){
   }
   
   # run the optimization using min and max r, using the mean as the starting guess
-  opt <- optim(mean(r.guess), growth.minfunc, loss = loss.rmse, model = growth.exponential,
-               y = population[2:(nYears+1)], y0 = population[1:nYears], t = 1, method = 'L-BFGS-B',
+  opt <- optim(mean(r.guess), growth.minfunc, loss = loss.rmse, model = growth.exponential.apply,
+               y = population[2:(nYears+1)], y0 = population[1], nYears = nYears, method = 'L-BFGS-B',
                lower = min(r.guess), upper=max(r.guess))
   r.best <- opt$par
   return(r.best)
