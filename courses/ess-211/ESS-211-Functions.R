@@ -493,6 +493,19 @@ vsa <- function(fun, par.mins, par.maxs, nrun){
   }
   return(list(S,ST))
 }
+#############################
+# functions for assignment 6
+
+# create a function to index a matrix or a vector using another vector
+whichVec <- function(toIndex, indexVec){
+  nIndices <- length(indexVec)
+  outputIndex <- c()
+  for (i in seq(1, nIndices)){
+    tmpIndices <- which(toIndex == indexVec[i], arr.ind = TRUE)
+    if (length(tmpIndices) > 0) outputIndex <- append(outputIndex, tmpIndices)
+  }
+  return(outputIndex)
+}
 
 #############################
 # methods to calculate loss functions
