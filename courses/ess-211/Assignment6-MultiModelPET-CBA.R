@@ -6,6 +6,8 @@ setwd("~/cba/aei-grad-school/courses/ess-211/")
 
 # source the course functions
 source("ESS-211-Functions.R")
+library(maps)
+library(dplyr)
 
 #############################
 # task 1 - downloading data from nasa-larc
@@ -14,6 +16,7 @@ source("ESS-211-Functions.R")
 siteNames <- c("MtTamalpais", "LasCruces", "Tambopata", "Bakossi", "Hainan")
 siteList <- list()
 siteElev <- rep(0, length(siteNames))
+siteColors <- rainbow(5)
 
 # set output file names to download to our working directory
 weatherFiles <- paste0(siteNames, "WeatherData.txt")
@@ -25,6 +28,13 @@ lat.lon[2,] <- c(8.790813, -82.954302)
 lat.lon[3,] <- c(-13.075157, -69.471705)
 lat.lon[4,] <- c(5.052105, 9.522459)
 lat.lon[5,] <- c(19.170315, 109.765304)
+
+# set summer dates
+summer.N <- seq(171, 265) # june 20-sept 22
+summer.S <- c(seq(1, 79), seq(355, 366)) # dec 21-mar 20
+
+# enter the no-data value
+noData <- -99
 
 # set the start and end dates
 monthStart <- 12
@@ -58,6 +68,12 @@ for (i in seq(1, length(siteNames))){
   
   # read the file into a data frame, then add it to our list
   dfSite <- read.table(weatherFiles[i], skip=14)
+  names(dfSite) <- dfNames
+  
+  # set nodata values to NA
+  dfSite[which(dfSite == noData, arr.ind = TRUE)] <- NA
+  
+  # add the data frame to the list
   siteList[[i]] <- dfSite
   
   # read the elevation values for the extra credit
@@ -77,3 +93,51 @@ for (i in seq(1, length(siteNames))){
 
 #############################
 # problem 2 - world map plotting
+
+# loop through each site and get the mean summer temp and precip
+meanPrecip <- c()
+meanTemp <- c()
+for (i in seq(1,length(siteNames))){
+  
+  # find the indices of summer values based on latitude
+  if (lat.lon[i,1] >= 0){
+    summerVec <- whichVec(siteList[[i]][,"WEDAY"], summer.N)
+  } else {
+    summerVec <- whichVec(siteList[[i]][,"WEDAY"], summer.S)
+  }
+  
+  # find mean temp and precip values
+  meanPrecip[i] <- mean(siteList[[i]][summerVec,"RAIN"], na.rm = TRUE)
+  meanTemp[i] <- mean((siteList[[i]][summerVec, "TMAX"] + siteList[[i]][summerVec, "TMIN"])/2, na.rm = TRUE)
+}
+
+# set min/max temp values to scale the plot symbols
+cex.min <- 1
+cex.max <- 3
+tmp.min <- min(meanTemp)
+tmp.max <- max(meanTemp)
+cex.size <- ((meanTemp - tmp.min) / (tmp.max - tmp.min)) * (cex.max - cex.min) + cex.min
+
+# set up the base world map
+map(fill = TRUE, col = add.alpha("Black", 0.075))
+
+# add a legend
+legend("bottomleft", col = siteColors, legend = siteNames, cex=0.9, pch = rep(19, length(siteNames)))
+
+# loop through each of the sites and plot the names, coordinates, mean precip and temp for the sites
+for (i in seq(1, length(siteNames))){
+  points(lat.lon[i,2], lat.lon[i,1], cex = cex.size[i], pch = 19, col = siteColors[i])
+  text(lat.lon[i,2], lat.lon[i,1], labels = paste("MeanP:", format(round(meanPrecip[i], 1), nsmall = 1), 
+      "\nMeanT:", format(round(meanTemp[i], 1), nsmall=1)), pos = 2, cex=0.8, bg="White")
+  #legend(lat.lon[i,2], lat.lon[i,1], legend=c(paste("MeanP:", format(round(meanPrecip[i], 1), nsmall = 1)), 
+  #       paste("nMeanT:", format(round(meanTemp[i], 1), nsmall=1))), cex=0.8)
+}
+
+#############################
+# problem 3 computing seasonal PET for each year
+
+
+
+
+
+
