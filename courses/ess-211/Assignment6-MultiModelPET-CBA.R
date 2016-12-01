@@ -8,6 +8,7 @@ setwd("~/cba/aei-grad-school/courses/ess-211/")
 source("ESS-211-Functions.R")
 library(maps)
 library(dplyr)
+library(zoo)
 
 #############################
 # task 1 - downloading data from nasa-larc
@@ -70,8 +71,9 @@ for (i in seq(1, length(siteNames))){
   dfSite <- read.table(weatherFiles[i], skip=14)
   names(dfSite) <- dfNames
   
-  # set nodata values to NA
+  # set nodata values to NA, then fix them
   dfSite[which(dfSite == noData, arr.ind = TRUE)] <- NA
+  dfSite <- na.approx(dfSite)
   
   # add the data frame to the list
   siteList[[i]] <- dfSite
@@ -109,6 +111,12 @@ for (i in seq(1,length(siteNames))){
   # find mean temp and precip values
   meanPrecip[i] <- mean(siteList[[i]][summerVec,"RAIN"], na.rm = TRUE)
   meanTemp[i] <- mean((siteList[[i]][summerVec, "TMAX"] + siteList[[i]][summerVec, "TMIN"])/2, na.rm = TRUE)
+  
+  # add a new column to the data frame here to specify that we will be comparing precip and temp during summer
+  nSiteRows <- nrow(siteList[[i]])
+  inSeasonVec <- rep(FALSE, nSiteRows)
+  inSeasonVec[summerVec] <- TRUE
+  siteList[[i]]["inSeason"] <- inSeasonVec
 }
 
 # set min/max temp values to scale the plot symbols
