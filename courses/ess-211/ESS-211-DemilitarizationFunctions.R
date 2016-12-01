@@ -184,3 +184,8 @@ unemployment.framework3 <- function(dframe, sd, per = NA){
   return(framework3)
 }
 
+#############################
+# basic model functions
+
+# a function to get the indices for years to model
+#seq(year.start, year.end-year.demil, by=year.demil)
