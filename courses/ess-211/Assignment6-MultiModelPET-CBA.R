@@ -165,7 +165,7 @@ for (i in seq(1, nSites)){
 # this comment is where i register my displeasure with having to use dplyr here. 
 
 # create vectors/matrices to store outputs
-petMethods <- c("PriestlyTaylor", "ModifiedPriestlyTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
+petMethods <- c("PriestlyTaylor", "ModPriestlyTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
 petMeans <- matrix(nrow = nSites, ncol = length(petMethods))
 petStdvs <- matrix(nrow = nSites, ncol = length(petMethods))
 
@@ -206,7 +206,11 @@ stdVec <- c(t(petStdvs))
 colVec <- rep(siteColors, each = length(petMethods))
 xlabVec <- rep(petMethods, nSites)
 nVals <- length(meanVec)
-title <- "Potential Evapotranspiration by Site and by Method"
+title <- "Potential Evapotranspiration by Site and by Method \n Growing Season: March to April"
+ylab <- "Potential Evapotranspiration"
 
-plotCI(meanVec, uiw = stdVec, col = colVec, xlab = NA, ylab = "Potential Evapotranspiration", pch = 19, xaxt = "n", main = title)
-axis(1, at = 1:nVals, labels = xlabVec, las = 2)
+# set up the bar plot
+barplot2(meanVec, names.arg = xlabVec, las = 2, main = title, ylab = ylab, col = colVec, plot.ci = TRUE, 
+         ci.l = (meanVec - stdVec), ci.u = (meanVec + stdVec))
+legend("topleft", legend = siteNames, col = siteColors, pch = rep(19, nSites))
+plotCI(meanVec, uiw = stdVec, add = TRUE)
