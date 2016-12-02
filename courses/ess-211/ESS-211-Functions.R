@@ -10,7 +10,7 @@ pet.e0 <- function(temp){
 
 # this is how FAO suggests one do it for daily esat b/c of nonlinearity of e0 function 
 pet.esat <- function(tmax,tmin){ 
-  (e0(tmax)+e0(tmin))/2  
+  (pet.e0(tmax)+pet.e0(tmin))/2  
 }
 
 # slope of saturation curve
@@ -45,8 +45,8 @@ pet.daylength <-function(lat, doy){
 
 # net surface radiation
 pet.Rn <- function(lat, elev, doy, dew, tmax, tmin, Rs){
-  ea=e0(dew)
-  Ra=Ra(doy,lat)
+  ea=pet.e0(dew)
+  Ra=pet.Ra(doy,lat)
   Rso=(0.75+(2e-5)*elev)*Ra          #p85
   Rnl=4.903e-9*(((tmax+273)^4+(tmin+273)^4)/2)*(0.34-0.14*sqrt(ea))*(1.35*(Rs/Rso)-0.35)  #p86
   Rn=(1-0.23)*Rs-Rnl             #(Rns=(1-0.23)Rs) ; Rn=Rns-Rnl p87
@@ -62,16 +62,16 @@ pet.priestlyTaylor <- function(doy, tMax, tMin, tMean, RH, tDew, Rs, elev, lat){
   a <- 1.26
   
   # calculate slope of vapor pressure curve using temp above
-  vpSlope <- s(tMean)
+  vpSlope <- pet.s(tMean)
   
   # calculate the psychometric constant
-  gamma <- psychro(elev)
+  gamma <- pet.psychro(elev)
   
   # set the ground heat flux to zero
   groundHeatFlux <- 0
   
   # calculate net radiation
-  netRadiation <- Rn(lat, elev, doy, tDew, tMax, tMin, Rs)
+  netRadiation <- pet.Rn(lat, elev, doy, tDew, tMax, tMin, Rs)
   
   # set lambda
   lambda <- 2.501 - (0.002361 * tMean)
@@ -107,13 +107,13 @@ pet.modifiedPriestlyTaylor <- function(tMax, tMin, Rs){
 # method 3: hammon
 pet.hammon <- function(doy, tMax, tMin, tMean, lat){
   # calculate the day length
-  dl <- daylength(lat, doy)
+  dl <- pet.daylength(lat, doy)
   
   # transform day length to fraction of a day (i.e. 0-1 with 0 as no sunlight, 1 as all-day light
   dl <- dl / 24
   
   # calculate the saturated vapor pressure
-  vpSat <- esat(tMax, tMin)
+  vpSat <- pet.esat(tMax, tMin)
   
   # run the PET calculation
   PET <- 715.5 * dl * (vpSat / (tMean + 273.2))
@@ -121,12 +121,12 @@ pet.hammon <- function(doy, tMax, tMin, tMean, lat){
 }
 
 # method 4: hargreaves
-pet.hargreaves <- function(doy, tMax, tMin, tMean){
+pet.hargreaves <- function(doy, tMax, tMin, tMean, lat){
   # calculate lambda
   lambda <- 2.501 - (0.002361 * tMean)
   
   # calculate atmospheric net radiation
-  atmRad <- Ra(doy, lat)
+  atmRad <- pet.Ra(doy, lat)
   
   # run the PET calculation
   PET <- (0.0023 * (tMean + 17.8) * ((tMax - tMin)^0.5) * atmRad) / lambda
@@ -134,7 +134,7 @@ pet.hargreaves <- function(doy, tMax, tMin, tMean){
 }
 
 # method 5: linacre
-pet.linacre <- function(tMean, elev, lat){
+pet.linacre <- function(tMean, elev, lat, tDew){
   # calculate Tm
   Tm <- tMean + (0.006 * elev)
   
@@ -149,7 +149,7 @@ pet.turc <- function(tMean, RH, Rs){
   RsCal <- Rs * 23.9
   
   # convert RH to 1-100 scale
-  RH = RH * 100
+  #RH = RH * 100
   
   # PET is calculated differently based on relative humidity
   if (RH < 50){
