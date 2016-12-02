@@ -9,6 +9,7 @@ source("ESS-211-Functions.R")
 library(maps)
 library(dplyr)
 library(zoo)
+library(gplots)
 
 #############################
 # task 1 - downloading data from nasa-larc
@@ -131,7 +132,7 @@ for (i in seq(1, nSites)){
   # add a new column for growing season
   nSiteRows <- nrow(siteList[[i]])
   inSeasonVec <- rep(FALSE, nSiteRows)
-  growingVec <- whichVec(siteList[[i]], growingSeason)
+  growingVec <- whichVec(siteList[[i]][,"WEDAY"], growingSeason)
   inSeasonVec[growingVec] <- TRUE
   siteList[[i]]["inSeason"] <- inSeasonVec
 }
@@ -144,7 +145,7 @@ tmp.max <- max(meanTemp)
 cex.size <- ((meanTemp - tmp.min) / (tmp.max - tmp.min)) * (cex.max - cex.min) + cex.min
 
 # set up the base world map
-map(fill = TRUE, col = add.alpha("Black", 0.075))
+map(fill = TRUE, col = add.alpha("Black", 0.075), bg = "Grey")
 
 # add a legend
 legend("bottomleft", col = siteColors, legend = siteNames, cex=0.9, pch = rep(19, length(siteNames)))
@@ -168,7 +169,7 @@ petMethods <- c("PriestlyTaylor", "ModifiedPriestlyTaylor", "Hamon", "Hargreaves
 petMeans <- matrix(nrow = nSites, ncol = length(petMethods))
 petStdvs <- matrix(nrow = nSites, ncol = length(petMethods))
 
-for (i in seq(q, nSites)){
+for (i in seq(1, nSites)){
   petGroup <- group_by(siteList[[i]], inSeason)
   petSummary <- summarize(petGroup,
     mean.PriestlyTaylor = mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
@@ -199,6 +200,13 @@ for (i in seq(q, nSites)){
   petStdvs[i, 6] <- petSummary$sd.Turc[2]
 }
 
+# prepare the bar plot for these values
+meanVec <- c(t(petMeans))
+stdVec <- c(t(petStdvs))
+colVec <- rep(siteColors, each = length(petMethods))
+xlabVec <- rep(petMethods, nSites)
+nVals <- length(meanVec)
+title <- "Potential Evapotranspiration by Site and by Method"
 
-
-
+plotCI(meanVec, uiw = stdVec, col = colVec, xlab = NA, ylab = "Potential Evapotranspiration", pch = 19, xaxt = "n", main = title)
+axis(1, at = 1:nVals, labels = xlabVec, las = 2)
