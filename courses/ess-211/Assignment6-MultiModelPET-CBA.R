@@ -43,7 +43,7 @@ growingSeason <- seq(60, 120) # mar 1 - apr 30
 noData <- -99
 
 # set the start and end dates
-monthStart <- 12
+monthStart <- 1
 monthEnd <- monthStart
 dayStart <- 1
 dayEnd <- dayStart
@@ -51,6 +51,14 @@ yearStart <- 2006
 yearEnd <- 2016
 years <- yearStart:yearEnd
 nYears <- yearEnd - yearStart
+
+# set the temp and precip change values
+tempLow <- 1
+tempMean <- 2
+tempHigh <- 3
+precipLow <- -0.1
+precipMean <- 0.0
+precipHigh <- 0.1
 
 # set names to use in the output data frames
 dfNames <- c("WEYR", "WEDAY",  "SRAD", "TMAX", "TMIN", "RAIN", "WIND", "TDEW", "T2M", "RH2M")
@@ -171,24 +179,59 @@ petMethods <- c("PriestlyTaylor", "ModPriesTaylor", "Hamon", "Hargreaves", "Lina
 nMethods <- length(petMethods)
 petMeans <- array(dim=c(nSites, nMethods, nYears))
 petStdvs <- array(dim=c(nSites, nMethods, nYears))
-meanPrecip <- array(dim=c(nSites, nMethods))
+pmPetMeans <- array(dim=c(nSites, nMethods, nYears))
+pmPetStdvs <- array(dim=c(nSites, nMethods, nYears))
+pmeanmPETMeans <- array(dim=c(nSites, nMethods, nYears))
+pmPETmeanMeans <- array(dim=c(nSites, nMethods, nYears))
+lowTChangePET <- array(dim=c(nSites, nYears))
+lowTChangePmPET <- array(dim=c(nSites, nYears))
+highTChangePET <- array(dim=c(nSites, nYears))
+highTChangePmPET <- array(dim=c(nSites, nYears))
+lowPChangePET <- array(dim=c(nSites, nYears))
+lowPChangePmPET <- array(dim=c(nSites, nYears))
+highPChangePET <- array(dim=c(nSites, nYears))
+highPChangePmPET <- array(dim=c(nSites, nYears))
+
+#meanPrecip <- array(dim=c(nSites, nYears))
 
 for (i in seq(1, nSites)){
+  # group by year an add new columns for the PET calculations
   petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
+  petGroup <- mutate(petGroup, PriestlyTaylor = pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     ModifiedPriestlyTaylor = pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD),
+                     Hamon = pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT),
+                     Hargreaves = pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT),
+                     Linacre = pet.linacre(TMEAN, ELEV, LAT, TDEW),
+                     Turc = pet.turc(TMEAN, RH2M, SRAD),
+                     meanPrecip = mean(RAIN),
+                     lowTMAX = TMAX + tempLow,
+                     lowTMIN = TMIN + tempLow,
+                     lowTMEAN = TMEAN + tempLow,
+                     meanTMAX = TMAX + tempMean,
+                     meanTMIN = TMIN + tempMean,
+                     meanTMEAN = TMEAN + tempMean,
+                     maxTMAX = TMAX + tempHigh,
+                     maxTMIN = TMIN + tempHigh,
+                     maxTMEAN = TMEAN + tempMean,
+                     lowRAIN = RAIN + (RAIN * precipLow),
+                     meanRAIN = RAIN + (RAIN * precipMean),
+                     highRAIN = RAIN + (RAIN * precipHigh))
+  
+  # report the summary statistics for PET variables
   petSummary <- summarize(petGroup,
-    mean.PriestlyTaylor = mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
-    mean.ModifiedPriestlyTaylor = mean(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
-    mean.Hamon = mean(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Hargreaves = mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Linacre = mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
-    mean.Turc = mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
+    mean.PriestlyTaylor = mean(PriestlyTaylor, na.rm=TRUE),
+    mean.ModifiedPriestlyTaylor = mean(ModifiedPriestlyTaylor, na.rm=TRUE),
+    mean.Hamon = mean(Hamon, na.rm=TRUE),
+    mean.Hargreaves = mean(Hargreaves, na.rm=TRUE),
+    mean.Linacre = mean(Linacre, na.rm=TRUE),
+    mean.Turc = mean(Turc, na.rm=TRUE),
     mean.Precip = mean(RAIN),
-    sd.PriestlyTaylor = sd(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
-    sd.ModifiedPriestlyTaylor = sd(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
-    sd.Hamon = sd(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    sd.Hargreaves = sd(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    sd.Linacre = sd(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
-    sd.Turc = sd(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE))
+    sd.PriestlyTaylor = sd(PriestlyTaylor, na.rm=TRUE),
+    sd.ModifiedPriestlyTaylor = sd(ModifiedPriestlyTaylor, na.rm=TRUE),
+    sd.Hamon = sd(Hamon, na.rm=TRUE),
+    sd.Hargreaves = sd(Hargreaves, na.rm=TRUE),
+    sd.Linacre = sd(Linacre, na.rm=TRUE),
+    sd.Turc = sd(Turc, na.rm=TRUE))
   
   # assign this absurd stuff to an output matrix
   petMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
@@ -203,16 +246,124 @@ for (i in seq(1, nSites)){
   petStdvs[i, 4,] <- petSummary$sd.Hargreaves
   petStdvs[i, 5,] <- petSummary$sd.Linacre
   petStdvs[i, 6,] <- petSummary$sd.Turc
-  meanPrecip[i,] <- petSummary$mean.Precip
+  #meanPrecip[i,] <- petSummary$mean.Precip
   
-  # create new columns to analyze in problem 5
-  #siteList[[i]]["meanPriestlyTaylor"] = rep(petSummary$mean.PriestlyTaylor, nrow(siteList[[i]]))
-  #siteList[[i]]["meanModifiedPriestlyTaylor"] = rep(petSummary$mean.ModifiedPriestlyTaylor, nrow(siteList[[i]]))
-  #siteList[[i]]["meanHamon"] = rep(petSummary$mean.Hamon, nrow(siteList[[i]]))
-  #siteList[[i]]["meanHargreaves"] = rep(petSummary$mean.Hargreaves, nrow(siteList[[i]]))
-  #siteList[[i]]["meanLinacre"] = rep(petSummary$mean.Linacre, nrow(siteList[[i]]))
-  #siteList[[i]]["meanTurc"] = rep(petSummary$mean.Turc, nrow(siteList[[i]]))
-  #siteList[[i]]["meanPrecip"] = rep(petSummary$mean.Precip, nrow(siteList[[i]]))
+  # create new columns to analyze in problems 4 and 5
+  petGroup <- mutate(petGroup, MeanPriestlyTaylor = mean(PriestlyTaylor, na.rm = TRUE),
+                     MeanModifiedPriestlyTaylor = mean(ModifiedPriestlyTaylor, na.rm = TRUE),
+                     MeanHamon = mean(Hamon, na.rm = TRUE),
+                     MeanHargreaves = mean(Hargreaves, na.rm = TRUE),
+                     MeanLinacre = mean(Linacre, na.rm = TRUE),
+                     MeanTurc = mean(Turc, na.rm = TRUE),
+                     pmPriestlyTaylor = RAIN - PriestlyTaylor,
+                     pmModifiedPriestlyTaylor = RAIN - ModifiedPriestlyTaylor,
+                     pmHamon = RAIN - Hamon,
+                     pmHargreaves = RAIN - Hargreaves,
+                     pmLinacre = RAIN - Linacre,
+                     pmTurc = RAIN - Turc)
+  
+  # report the summary statistics for P-PET variables
+  petSummary <- summarize(petGroup,
+                          mean.pmPriestlyTaylor = mean(pmPriestlyTaylor, na.rm=TRUE),
+                          mean.pmModifiedPriestlyTaylor = mean(pmModifiedPriestlyTaylor, na.rm=TRUE),
+                          mean.pmHamon = mean(pmHamon, na.rm=TRUE),
+                          mean.pmHargreaves = mean(pmHargreaves, na.rm=TRUE),
+                          mean.pmLinacre = mean(pmLinacre, na.rm=TRUE),
+                          mean.pmTurc = mean(pmTurc, na.rm=TRUE),
+                          sd.pmPriestlyTaylor = sd(pmPriestlyTaylor, na.rm=TRUE),
+                          sd.pmModifiedPriestlyTaylor = sd(pmModifiedPriestlyTaylor, na.rm=TRUE),
+                          sd.pmHamon = sd(pmHamon, na.rm=TRUE),
+                          sd.pmHargreaves = sd(pmHargreaves, na.rm=TRUE),
+                          sd.pmLinacre = sd(pmLinacre, na.rm=TRUE),
+                          sd.pmTurc = sd(pmTurc, na.rm=TRUE))
+  
+  # assign this absurd stuff to an output matrix
+  pmPetMeans[i, 1,] <- petSummary$mean.pmPriestlyTaylor
+  pmPetMeans[i, 2,] <- petSummary$mean.pmModifiedPriestlyTaylor
+  pmPetMeans[i, 3,] <- petSummary$mean.pmHamon
+  pmPetMeans[i, 4,] <- petSummary$mean.pmHargreaves
+  pmPetMeans[i, 5,] <- petSummary$mean.pmLinacre
+  pmPetMeans[i, 6,] <- petSummary$mean.pmTurc
+  pmPetStdvs[i, 1,] <- petSummary$sd.pmPriestlyTaylor
+  pmPetStdvs[i, 2,] <- petSummary$sd.pmModifiedPriestlyTaylor
+  pmPetStdvs[i, 3,] <- petSummary$sd.pmHamon
+  pmPetStdvs[i, 4,] <- petSummary$sd.pmHargreaves
+  pmPetStdvs[i, 5,] <- petSummary$sd.pmLinacre
+  pmPetStdvs[i, 6,] <- petSummary$sd.pmTurc
+  
+  # then go through another round to add more columns to asses for problem 5
+  petGroup <- mutate(petGroup, pmMeanPriestlyTaylor = RAIN - MeanPriestlyTaylor,
+                     pmMeanModifiedPriestlyTaylor = RAIN - MeanModifiedPriestlyTaylor,
+                     pmMeanHamon = RAIN - MeanHamon,
+                     pmMeanHargreaves = RAIN - MeanHargreaves,
+                     pmMeanLinacre = RAIN - MeanLinacre,
+                     pmMeanTurc = RAIN - MeanTurc,
+                     meanPmPriestlyTaylor = meanPrecip - PriestlyTaylor,
+                     meanPmModifiedPriestlyTaylor = meanPrecip - ModifiedPriestlyTaylor,
+                     meanPmHamon = meanPrecip - Hamon,
+                     meanPmHargreaves = meanPrecip - Hargreaves,
+                     meanPmLinacre = meanPrecip - Linacre,
+                     meanPmTurc = meanPrecip - Turc)
+  
+  # report the summary statistics for the P(yearlyMean) - PET(everyValue) and P(everyValue) - PET(yearlyMean) variables
+  petSummary <- summarize(petGroup,
+                          mean.pmMeanPriestlyTaylor = mean(pmMeanPriestlyTaylor, na.rm=TRUE),
+                          mean.pmMeanModifiedPriestlyTaylor = mean(pmMeanModifiedPriestlyTaylor, na.rm=TRUE),
+                          mean.pmMeanHamon = mean(pmMeanHamon, na.rm=TRUE),
+                          mean.pmMeanHargreaves = mean(pmMeanHargreaves, na.rm=TRUE),
+                          mean.pmMeanLinacre = mean(pmMeanLinacre, na.rm=TRUE),
+                          mean.pmMeanTurc = mean(pmMeanTurc, na.rm=TRUE),
+                          mean.meanPmPriestlyTaylor = mean(meanPmPriestlyTaylor, na.rm=TRUE),
+                          mean.meanPmModifiedPriestlyTaylor = mean(meanPmModifiedPriestlyTaylor, na.rm=TRUE),
+                          mean.meanPmHamon = mean(meanPmHamon, na.rm=TRUE),
+                          mean.meanPmHargreaves = mean(meanPmHargreaves, na.rm=TRUE),
+                          mean.meanPmLinacre = mean(meanPmLinacre, na.rm=TRUE),
+                          mean.meanPmTurc = mean(meanPmTurc, na.rm=TRUE))
+  
+  # assign this absurd stuff to an output matrix
+  pmeanmPETMeans[i, 1,] <- petSummary$mean.meanPmPriestlyTaylor
+  pmeanmPETMeans[i, 2,] <- petSummary$mean.meanPmModifiedPriestlyTaylor
+  pmeanmPETMeans[i, 3,] <- petSummary$mean.meanPmHamon
+  pmeanmPETMeans[i, 4,] <- petSummary$mean.meanPmHargreaves
+  pmeanmPETMeans[i, 5,] <- petSummary$mean.meanPmLinacre
+  pmeanmPETMeans[i, 6,] <- petSummary$mean.meanPmTurc
+  pmPETmeanMeans[i, 1,] <- petSummary$mean.pmMeanPriestlyTaylor
+  pmPETmeanMeans[i, 2,] <- petSummary$mean.pmMeanModifiedPriestlyTaylor
+  pmPETmeanMeans[i, 3,] <- petSummary$mean.pmMeanHamon
+  pmPETmeanMeans[i, 4,] <- petSummary$mean.pmMeanHargreaves
+  pmPETmeanMeans[i, 5,] <- petSummary$mean.pmMeanLinacre
+  pmPETmeanMeans[i, 6,] <- petSummary$mean.pmMeanTurc
+  
+  # now mutate for problem 6 climate modeling
+  petGroup <- mutate(petGroup, lowTChangePET = pet.priestlyTaylor(WEDAY, lowTMAX, lowTMIN, lowTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     lowTChangePmPET = meanRAIN - pet.priestlyTaylor(WEDAY, lowTMAX, lowTMIN, lowTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     highTChangePET = pet.priestlyTaylor(WEDAY, maxTMAX, maxTMIN, maxTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     highTChangePmPET = meanRAIN - pet.priestlyTaylor(WEDAY, maxTMAX, maxTMIN, maxTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     lowPChangePET = pet.priestlyTaylor(WEDAY, meanTMAX, meanTMIN, meanTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     lowPChangePmPET = lowRAIN - pet.priestlyTaylor(WEDAY, meanTMAX, meanTMIN, meanTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     highPChangePET = pet.priestlyTaylor(WEDAY, meanTMAX, meanTMIN, meanTMEAN, RH2M, TDEW, SRAD, ELEV, LAT),
+                     highPChangePmPET = highRAIN - pet.priestlyTaylor(WEDAY, meanTMAX, meanTMIN, meanTMEAN, RH2M, TDEW, SRAD, ELEV, LAT))
+  
+  # summarize the changes in climate
+  petSummary <- summarize(petGroup,
+                          mean.lowTChangePET = mean(lowTChangePET, na.rm = TRUE),
+                          mean.lowTChangePmPET = mean(lowTChangePmPET, na.rm = TRUE),
+                          mean.highTChangePET = mean(highTChangePET, na.rm = TRUE),
+                          mean.highTChangePmPET = mean(highTChangePmPET, na.rm = TRUE),
+                          mean.lowPChangePET = mean(lowPChangePET, na.rm = TRUE),
+                          mean.lowPChangePmPET = mean(lowPChangePmPET, na.rm = TRUE),
+                          mean.highPChangePET = mean(highPChangePET, na.rm = TRUE),
+                          mean.highPChangePmPET = mean(highPChangePmPET, na.rm = TRUE))
+  
+  # and assign to output variables
+  lowTChangePET[i,] <- petSummary$mean.lowTChangePET
+  lowTChangePmPET[i,] <- petSummary$mean.lowTChangePmPET
+  highTChangePET[i,] <- petSummary$mean.highTChangePET
+  highTChangePmPET[i,] <- petSummary$mean.highTChangePmPET
+  lowPChangePET[i,] <- petSummary$mean.lowPChangePET
+  lowPChangePmPET[i,] <- petSummary$mean.lowPChangePmPET
+  highPChangePET[i,] <- petSummary$mean.highPChangePET
+  highPChangePmPET[i,] <- petSummary$mean.highPChangePmPET
 }
 
 # prepare the bar plot for these values
@@ -239,40 +390,6 @@ title(title, outer = TRUE)
 
 #############################
 # problem 4 - same as above, but for P - PET
-
-pmPetMeans <- array(dim=c(nSites, nMethods, nYears))
-pmPetStdvs <- array(dim=c(nSites, nMethods, nYears))
-
-for (i in seq(1, nSites)){
-  petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
-  petSummary <- summarize(petGroup,
-    mean.PriestlyTaylor = mean(RAIN - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
-    mean.ModifiedPriestlyTaylor = mean(RAIN - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
-    mean.Hamon = mean(RAIN - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Hargreaves = mean(RAIN - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Linacre = mean(RAIN - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
-    mean.Turc = mean(RAIN - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
-    sd.PriestlyTaylor = sd(RAIN - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
-    sd.ModifiedPriestlyTaylor = sd(RAIN - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
-    sd.Hamon = sd(RAIN - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    sd.Hargreaves = sd(RAIN - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    sd.Linacre = sd(RAIN - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
-    sd.Turc = sd(RAIN - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE))
-  
-  # assign this absurd stuff to an output matrix
-  pmPetMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
-  pmPetMeans[i, 2,] <- petSummary$mean.ModifiedPriestlyTaylor
-  pmPetMeans[i, 3,] <- petSummary$mean.Hamon
-  pmPetMeans[i, 4,] <- petSummary$mean.Hargreaves
-  pmPetMeans[i, 5,] <- petSummary$mean.Linacre
-  pmPetMeans[i, 6,] <- petSummary$mean.Turc
-  pmPetStdvs[i, 1,] <- petSummary$sd.PriestlyTaylor
-  pmPetStdvs[i, 2,] <- petSummary$sd.ModifiedPriestlyTaylor
-  pmPetStdvs[i, 3,] <- petSummary$sd.Hamon
-  pmPetStdvs[i, 4,] <- petSummary$sd.Hargreaves
-  pmPetStdvs[i, 5,] <- petSummary$sd.Linacre
-  pmPetStdvs[i, 6,] <- petSummary$sd.Turc
-}
 
 # prepare the bar plot for these values
 colVec <- rep(siteColors, each = nMethods)
@@ -306,41 +423,6 @@ title(title, outer = TRUE)
 #  should mean the variance in whatever parameter used every value
 #  was more important in driving the P-PET signal
 
-# so calculate P(yearlyMean) - PET(everyValue) and P(everyValue) - PET(yearlyMean)
-pmeanmPETMeans <- array(dim=c(nSites, nMethods, nYears))
-pmPETmeanMeans <- array(dim=c(nSites, nMethods, nYears))
-
-for (i in seq(1, nSites)){
-  petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
-  petSummary <- summarize(petGroup,
-    mean.PriestlyTaylor = mean(mean(RAIN, na.rm=TRUE) - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
-    mean.ModifiedPriestlyTaylor = mean(mean(RAIN, na.rm=TRUE) - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
-    mean.Hamon = mean(mean(RAIN, na.rm=TRUE) - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Hargreaves = mean(mean(RAIN, na.rm=TRUE) - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
-    mean.Linacre = mean(mean(RAIN, na.rm=TRUE) - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
-    mean.Turc = mean(mean(RAIN, na.rm=TRUE) - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
-    mean2.PriestlyTaylor = mean(RAIN - mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE), na.rm=TRUE),
-    mean2.ModifiedPriestlyTaylor = mean(RAIN - mean(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE), na.rm=TRUE),
-    mean2.Hamon = mean(RAIN - mean(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE), na.rm=TRUE),
-    mean2.Hargreaves = mean(RAIN - mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE), na.rm=TRUE),
-    mean2.Linacre = mean(RAIN - mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE), na.rm=TRUE),
-    mean2.Turc = mean(RAIN - mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE), na.rm=TRUE))
-  
-  # assign this absurd stuff to an output matrix
-  pmeanmPETMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
-  pmeanmPETMeans[i, 2,] <- petSummary$mean.ModifiedPriestlyTaylor
-  pmeanmPETMeans[i, 3,] <- petSummary$mean.Hamon
-  pmeanmPETMeans[i, 4,] <- petSummary$mean.Hargreaves
-  pmeanmPETMeans[i, 5,] <- petSummary$mean.Linacre
-  pmeanmPETMeans[i, 6,] <- petSummary$mean.Turc
-  pmPETmeanMeans[i, 1,] <- petSummary$mean2.PriestlyTaylor
-  pmPETmeanMeans[i, 2,] <- petSummary$mean2.ModifiedPriestlyTaylor
-  pmPETmeanMeans[i, 3,] <- petSummary$mean2.Hamon
-  pmPETmeanMeans[i, 4,] <- petSummary$mean2.Hargreaves
-  pmPETmeanMeans[i, 5,] <- petSummary$mean2.Linacre
-  pmPETmeanMeans[i, 6,] <- petSummary$mean2.Turc
-}
-
 # subtract the real P-PET
 pmeanmPETMeans <- pmeanmPETMeans - pmPetMeans
 pmPETmeanMeans <- pmPETmeanMeans - pmPetMeans
@@ -352,3 +434,38 @@ for (i in 1:nSites){
   averageEveryP[i,] <- rowMeans(pmeanmPETMeans[i,,], na.rm = TRUE)
   averageEveryPET[i,] <- rowMeans(pmeanmPETMeans[i,,], na.rm = TRUE)
 }
+
+# just kidding, dplyr doesn't work how I think it does. cutting bait now to work on problem 6
+
+#############################
+# problem 6 - climate modeling
+
+lowTChangePET[i,] <- petSummary$mean.lowTChangePET
+lowTChangePmPET[i,] <- petSummary$mean.lowTChangePmPET
+highTChangePET[i,] <- petSummary$mean.highTChangePET
+highTChangePmPET[i,] <- petSummary$mean.highTChangePmPET
+lowPChangePET[i,] <- petSummary$mean.lowPChangePET
+lowPChangePmPET[i,] <- petSummary$mean.lowPChangePmPET
+highPChangePET[i,] <- petSummary$mean.highPChangePET
+highPChangePmPET[i,] <- petSummary$mean.highPChangePmPET
+
+# set up the plot utility
+par(mfrow = c(2,4), oma = c(0,0,2,0))
+
+# set up labels
+title <- "Forecasting Effects of Climate Change on PET, P - PET"
+ylabPmPET <- "P - PET"
+ylabPET <- "PET"
+
+# plot the changes
+barplot2(rowMeans(lowTChangePET), names.arg = siteNames, las = 2, ylab = ylabPET, col = siteColors, main = "Low T Change")
+barplot2(rowMeans(highTChangePET), names.arg = siteNames, las = 2, ylab = ylabPET, col = siteColors, main = "High T Change")
+barplot2(rowMeans(lowPChangePET), names.arg = siteNames, las = 2, ylab = ylabPET, col = siteColors, main = "Low P Change")
+barplot2(rowMeans(highPChangePET), names.arg = siteNames, las = 2, ylab = ylabPET, col = siteColors, main = "High P Change")
+barplot2(rowMeans(lowTChangePmPET), names.arg = siteNames, las = 2, ylab = ylabPmPET, col = siteColors, main = "Low T Change")
+barplot2(rowMeans(highTChangePmPET), names.arg = siteNames, las = 2, ylab = ylabPmPET, col = siteColors, main = "High T Change")
+barplot2(rowMeans(lowPChangePmPET), names.arg = siteNames, las = 2, ylab = ylabPmPET, col = siteColors, main = "Low P Change")
+barplot2(rowMeans(highPChangePmPET), names.arg = siteNames, las = 2, ylab = ylabPmPET, col = siteColors, main = "High P Change")
+
+# add title to the final plot
+title(title, outer = TRUE)
