@@ -208,7 +208,7 @@ colVec <- rep(siteColors, each = nMethods)
 xlabVec <- rep(petMethods, nSites)
 nVals <- length(meanVec)
 title <- "Potential Evapotranspiration by Site and by Method \n Growing Season: March to April"
-ylab <- "Potential Evapotranspiration"
+ylab <- "PET"
 
 # create a 10-panel layout to plot with room for a title
 par(mfrow = c(2,5), oma = c(0,0,2,0))
@@ -222,8 +222,69 @@ for (i in seq(1,nYears)){
            ci.l = (meanVec - stdVec), ci.u = (meanVec + stdVec), main = years[i])
 }
 
-legend("topleft", legend = siteNames, col = siteColors, pch = rep(19, nSites))
+# add a title to the final plot
 title(title, outer = TRUE)
 
 #############################
-# problem 4 - 
+# problem 4 - same as above, but for P - PET
+
+pmPetMeans <- array(dim=c(nSites, nMethods, nYears))
+pmPetStdvs <- array(dim=c(nSites, nMethods, nYears))
+
+for (i in seq(1, nSites)){
+  petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
+  petSummary <- summarize(petGroup,
+    mean.PriestlyTaylor = mean(RAIN - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
+    mean.ModifiedPriestlyTaylor = mean(RAIN - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
+    mean.Hamon = mean(RAIN - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Hargreaves = mean(RAIN - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Linacre = mean(RAIN - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
+    mean.Turc = mean(RAIN - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
+    sd.PriestlyTaylor = sd(RAIN - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
+    sd.ModifiedPriestlyTaylor = sd(RAIN - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
+    sd.Hamon = sd(RAIN - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    sd.Hargreaves = sd(RAIN - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    sd.Linacre = sd(RAIN - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
+    sd.Turc = sd(RAIN - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE))
+  
+  # assign this absurd stuff to an output matrix
+  pmPetMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
+  pmPetMeans[i, 2,] <- petSummary$mean.ModifiedPriestlyTaylor
+  pmPetMeans[i, 3,] <- petSummary$mean.Hamon
+  pmPetMeans[i, 4,] <- petSummary$mean.Hargreaves
+  pmPetMeans[i, 5,] <- petSummary$mean.Linacre
+  pmPetMeans[i, 6,] <- petSummary$mean.Turc
+  pmPetStdvs[i, 1,] <- petSummary$sd.PriestlyTaylor
+  pmPetStdvs[i, 2,] <- petSummary$sd.ModifiedPriestlyTaylor
+  pmPetStdvs[i, 3,] <- petSummary$sd.Hamon
+  pmPetStdvs[i, 4,] <- petSummary$sd.Hargreaves
+  pmPetStdvs[i, 5,] <- petSummary$sd.Linacre
+  pmPetStdvs[i, 6,] <- petSummary$sd.Turc
+}
+
+# prepare the bar plot for these values
+colVec <- rep(siteColors, each = nMethods)
+xlabVec <- rep(petMethods, nSites)
+nVals <- length(meanVec)
+title <- "P - PET by Site and by Method \n Growing Season: March to April"
+ylab <- "P - PET"
+
+# create a 10-panel layout to plot with room for a title
+par(mfrow = c(2,5), oma = c(0,0,2,0))
+
+for (i in seq(1,nYears)){
+  meanVec <- c(t(pmPetMeans[,,i]))
+  stdVec <- c(t(pmPetStdvs[,,i]))
+  
+  # set up the bar plot
+  barplot2(meanVec, names.arg = xlabVec, las = 2, ylab = ylab, col = colVec, plot.ci = TRUE, 
+           ci.l = (meanVec - stdVec), ci.u = (meanVec + stdVec), main = years[i])
+}
+
+# add title to the final plot
+title(title, outer = TRUE)
+
+#############################
+# problem 5 - deriving a metric to asses importance of P vs PET in driving yearly P-PET
+
+# the metric I am choosing to use to assess the relative importance of
