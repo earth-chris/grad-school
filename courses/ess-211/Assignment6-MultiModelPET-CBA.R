@@ -16,14 +16,15 @@ library(zoo)
 # set the names of the sites
 siteNames <- c("MtTamalpais", "LasCruces", "Tambopata", "Bakossi", "Hainan")
 siteList <- list()
-siteElev <- rep(0, length(siteNames))
+nSites <- length(siteNames)
+siteElev <- rep(0, nSites)
 siteColors <- rainbow(5)
 
 # set output file names to download to our working directory
 weatherFiles <- paste0(siteNames, "WeatherData.txt")
 
 # set the lat/lon coordinates for each site
-lat.lon <- matrix(nrow = length(siteNames), ncol = 2)
+lat.lon <- matrix(nrow = nSites, ncol = 2)
 lat.lon[1,] <- c(37.923992, -122.596555)
 lat.lon[2,] <- c(8.790813, -82.954302)
 lat.lon[3,] <- c(-13.075157, -69.471705)
@@ -33,6 +34,9 @@ lat.lon[5,] <- c(19.170315, 109.765304)
 # set summer dates
 summer.N <- seq(171, 265) # june 20-sept 22
 summer.S <- c(seq(1, 79), seq(355, 366)) # dec 21-mar 20
+
+# set growing season dates
+growingSeason <- seq(60, 120) # mar 1 - apr 30
 
 # enter the no-data value
 noData <- -99
@@ -53,7 +57,9 @@ baseUrl <- "https://power.larc.nasa.gov/cgi-bin/agro.cgi?email=&step=1"
 urlDataRequest <- "&submit=Yes&p=toa_dwn&p=swv_dwn&p=lwv_dwn&p=T2M&p=T2MN&p=T2MX&p=RH2M&p=DFP2M&p=RAIN&p=WS10M"
 
 # loop through each of our sites and download the text file from a URL
-for (i in seq(1, length(siteNames))){
+for (i in seq(1, nSites)){
+  
+  # set up urls
   urlLat <- paste0("&lat=", lat.lon[i,1])
   urlLon <- paste0("&lon=", lat.lon[i,2])
   urlMs <- paste0("&ms=", monthStart)
@@ -73,10 +79,14 @@ for (i in seq(1, length(siteNames))){
   
   # set nodata values to NA, then fix them
   dfSite[which(dfSite == noData, arr.ind = TRUE)] <- NA
-  dfSite <- na.approx(dfSite)
+  dfSite <- data.frame(na.approx(dfSite, na.rm = TRUE))
   
-  # add the data frame to the list
-  siteList[[i]] <- dfSite
+  # add a column for mean temp
+  dfSite["TMEAN"] = (dfSite[, "TMAX"] + dfSite[, "TMIN"]) / 2
+  
+  # add new columns for lat/lon
+  dfSite["LAT"] <- rep(lat.lon[i,1], nrow(dfSite))
+  dfSite["LON"] <- rep(lat.lon[i,2], nrow(dfSite))
   
   # read the elevation values for the extra credit
   fileRef <- file(weatherFiles[i])
@@ -89,6 +99,12 @@ for (i in seq(1, length(siteNames))){
         siteElev[i] <- mdStr[5]
       }
     }
+    
+    # add elevation column
+    dfSite["ELEV"] <- rep(as.numeric(siteElev[i]), nrow(dfSite))
+    
+    # add the data frame to the list
+    siteList[[i]] <- dfSite
   }
   close(fileRef)
 }
@@ -99,7 +115,7 @@ for (i in seq(1, length(siteNames))){
 # loop through each site and get the mean summer temp and precip
 meanPrecip <- c()
 meanTemp <- c()
-for (i in seq(1,length(siteNames))){
+for (i in seq(1, nSites)){
   
   # find the indices of summer values based on latitude
   if (lat.lon[i,1] >= 0){
@@ -110,12 +126,13 @@ for (i in seq(1,length(siteNames))){
   
   # find mean temp and precip values
   meanPrecip[i] <- mean(siteList[[i]][summerVec,"RAIN"], na.rm = TRUE)
-  meanTemp[i] <- mean((siteList[[i]][summerVec, "TMAX"] + siteList[[i]][summerVec, "TMIN"])/2, na.rm = TRUE)
+  meanTemp[i] <- mean(siteList[[i]][summerVec, "TMEAN"], na.rm = TRUE)
   
-  # add a new column to the data frame here to specify that we will be comparing precip and temp during summer
+  # add a new column for growing season
   nSiteRows <- nrow(siteList[[i]])
   inSeasonVec <- rep(FALSE, nSiteRows)
-  inSeasonVec[summerVec] <- TRUE
+  growingVec <- whichVec(siteList[[i]], growingSeason)
+  inSeasonVec[growingVec] <- TRUE
   siteList[[i]]["inSeason"] <- inSeasonVec
 }
 
@@ -133,10 +150,10 @@ map(fill = TRUE, col = add.alpha("Black", 0.075))
 legend("bottomleft", col = siteColors, legend = siteNames, cex=0.9, pch = rep(19, length(siteNames)))
 
 # loop through each of the sites and plot the names, coordinates, mean precip and temp for the sites
-for (i in seq(1, length(siteNames))){
+for (i in seq(1, nSites)){
   points(lat.lon[i,2], lat.lon[i,1], cex = cex.size[i], pch = 19, col = siteColors[i])
   text(lat.lon[i,2], lat.lon[i,1], labels = paste("MeanP:", format(round(meanPrecip[i], 1), nsmall = 1), 
-      "\nMeanT:", format(round(meanTemp[i], 1), nsmall=1)), pos = 2, cex=0.8, bg="White")
+      "\nMeanT:", format(round(meanTemp[i], 1), nsmall=1)), pos = 2, cex=0.8, bg="White", col="White")
   #legend(lat.lon[i,2], lat.lon[i,1], legend=c(paste("MeanP:", format(round(meanPrecip[i], 1), nsmall = 1)), 
   #       paste("nMeanT:", format(round(meanTemp[i], 1), nsmall=1))), cex=0.8)
 }
@@ -144,7 +161,43 @@ for (i in seq(1, length(siteNames))){
 #############################
 # problem 3 computing seasonal PET for each year
 
+# this comment is where i register my displeasure with having to use dplyr here. 
 
+# create vectors/matrices to store outputs
+petMethods <- c("PriestlyTaylor", "ModifiedPriestlyTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
+petMeans <- matrix(nrow = nSites, ncol = length(petMethods))
+petStdvs <- matrix(nrow = nSites, ncol = length(petMethods))
+
+for (i in seq(q, nSites)){
+  petGroup <- group_by(siteList[[i]], inSeason)
+  petSummary <- summarize(petGroup,
+    mean.PriestlyTaylor = mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
+    mean.ModifiedPriestlyTaylor = mean(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
+    mean.Hamon = mean(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Hargreaves = mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Linacre = mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
+    mean.Turc = mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
+    sd.PriestlyTaylor = sd(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
+    sd.ModifiedPriestlyTaylor = sd(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
+    sd.Hamon = sd(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    sd.Hargreaves = sd(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    sd.Linacre = sd(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
+    sd.Turc = sd(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE))
+  
+  # assign this absurd stuff to an output matrix
+  petMeans[i, 1] <- petSummary$mean.PriestlyTaylor[2]
+  petMeans[i, 2] <- petSummary$mean.ModifiedPriestlyTaylor[2]
+  petMeans[i, 3] <- petSummary$mean.Hamon[2]
+  petMeans[i, 4] <- petSummary$mean.Hargreaves[2]
+  petMeans[i, 5] <- petSummary$mean.Linacre[2]
+  petMeans[i, 6] <- petSummary$mean.Turc[2]
+  petStdvs[i, 1] <- petSummary$sd.PriestlyTaylor[2]
+  petStdvs[i, 2] <- petSummary$sd.ModifiedPriestlyTaylor[2]
+  petStdvs[i, 3] <- petSummary$sd.Hamon[2]
+  petStdvs[i, 4] <- petSummary$sd.Hargreaves[2]
+  petStdvs[i, 5] <- petSummary$sd.Linacre[2]
+  petStdvs[i, 6] <- petSummary$sd.Turc[2]
+}
 
 
 
