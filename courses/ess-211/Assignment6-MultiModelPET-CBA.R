@@ -181,6 +181,7 @@ for (i in seq(1, nSites)){
     mean.Hargreaves = mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
     mean.Linacre = mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
     mean.Turc = mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
+    #mean.Precip = mean(RAIN),
     sd.PriestlyTaylor = sd(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
     sd.ModifiedPriestlyTaylor = sd(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
     sd.Hamon = sd(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
@@ -201,6 +202,15 @@ for (i in seq(1, nSites)){
   petStdvs[i, 4,] <- petSummary$sd.Hargreaves
   petStdvs[i, 5,] <- petSummary$sd.Linacre
   petStdvs[i, 6,] <- petSummary$sd.Turc
+  
+  # create new columns to analyze in problem 5
+  #siteList[[i]]["meanPriestlyTaylor"] = rep(petSummary$mean.PriestlyTaylor, nrow(siteList[[i]]))
+  #siteList[[i]]["meanModifiedPriestlyTaylor"] = rep(petSummary$mean.ModifiedPriestlyTaylor, nrow(siteList[[i]]))
+  #siteList[[i]]["meanHamon"] = rep(petSummary$mean.Hamon, nrow(siteList[[i]]))
+  #siteList[[i]]["meanHargreaves"] = rep(petSummary$mean.Hargreaves, nrow(siteList[[i]]))
+  #siteList[[i]]["meanLinacre"] = rep(petSummary$mean.Linacre, nrow(siteList[[i]]))
+  #siteList[[i]]["meanTurc"] = rep(petSummary$mean.Turc, nrow(siteList[[i]]))
+  #siteList[[i]]["meanPrecip"] = rep(petSummary$mean.Precip, nrow(siteList[[i]]))
 }
 
 # prepare the bar plot for these values
@@ -287,4 +297,57 @@ title(title, outer = TRUE)
 #############################
 # problem 5 - deriving a metric to asses importance of P vs PET in driving yearly P-PET
 
-# the metric I am choosing to use to assess the relative importance of
+# I am choosing to assess the relative importance of P vs PET in driving
+#  variability in P - PET by calculating P(yearlyMean) - PET(everyValue)
+#  and P(everyValue) - PET(yearlyMean), then subtract each of these from the 
+#  original P(everyValue)-PET(everyValue) calculations. smaller residuals
+#  should mean the variance in whatever parameter used every value
+#  was more important in driving the P-PET signal
+
+
+# so calculate P(yearlyMean) - PET(everyValue) and P(everyValue) - PET(yearlyMean)
+pmeanmPETMeans <- array(dim=c(nSites, nMethods, nYears))
+pmPETmeanMeans <- array(dim=c(nSites, nMethods, nYears))
+
+for (i in seq(1, nSites)){
+  petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
+  petSummary <- summarize(petGroup,
+    mean.PriestlyTaylor = mean(mean(RAIN, na.rm=TRUE) - pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
+    mean.ModifiedPriestlyTaylor = mean(mean(RAIN, na.rm=TRUE) - pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
+    mean.Hamon = mean(mean(RAIN, na.rm=TRUE) - pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Hargreaves = mean(mean(RAIN, na.rm=TRUE) - pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
+    mean.Linacre = mean(mean(RAIN, na.rm=TRUE) - pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
+    mean.Turc = mean(mean(RAIN, na.rm=TRUE) - pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
+    mean2.PriestlyTaylor = mean(RAIN - mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE), na.rm=TRUE),
+    mean2.ModifiedPriestlyTaylor = mean(RAIN - mean(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE), na.rm=TRUE),
+    mean2.Hamon = mean(RAIN - mean(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE), na.rm=TRUE),
+    mean2.Hargreaves = mean(RAIN - mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE), na.rm=TRUE),
+    mean2.Linacre = mean(RAIN - mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE), na.rm=TRUE),
+    mean2.Turc = mean(RAIN - mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE), na.rm=TRUE))
+  
+  # assign this absurd stuff to an output matrix
+  pmeanmPETMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
+  pmeanmPETMeans[i, 2,] <- petSummary$mean.ModifiedPriestlyTaylor
+  pmeanmPETMeans[i, 3,] <- petSummary$mean.Hamon
+  pmeanmPETMeans[i, 4,] <- petSummary$mean.Hargreaves
+  pmeanmPETMeans[i, 5,] <- petSummary$mean.Linacre
+  pmeanmPETMeans[i, 6,] <- petSummary$mean.Turc
+  pmPETmeanMeans[i, 1,] <- petSummary$mean2.PriestlyTaylor
+  pmPETmeanMeans[i, 2,] <- petSummary$mean2.ModifiedPriestlyTaylor
+  pmPETmeanMeans[i, 3,] <- petSummary$mean2.Hamon
+  pmPETmeanMeans[i, 4,] <- petSummary$mean2.Hargreaves
+  pmPETmeanMeans[i, 5,] <- petSummary$mean2.Linacre
+  pmPETmeanMeans[i, 6,] <- petSummary$mean2.Turc
+}
+
+# subtract the real P-PET
+pmeanmPETMeans <- pmeanmPETMeans - pmPetMeans
+pmPETmeanMeans <- pmPETmeanMeans - pmPetMeans
+
+# loop through and average by year
+averageEveryP <- matrix(nrow = nSites, ncol = nMethods)
+averageEveryPET <- matrix(nrow = nSites, ncol = nMethods)
+for (i in 1:nSites){
+  averageEveryP[i,] <- rowMeans(pmeanmPETMeans[i,,], na.rm = TRUE)
+  averageEveryPET[i,] <- rowMeans(pmeanmPETMeans[i,,], na.rm = TRUE)
+}
