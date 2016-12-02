@@ -49,6 +49,8 @@ dayStart <- 1
 dayEnd <- dayStart
 yearStart <- 2006
 yearEnd <- 2016
+years <- yearStart:yearEnd
+nYears <- yearEnd - yearStart
 
 # set names to use in the output data frames
 dfNames <- c("WEYR", "WEDAY",  "SRAD", "TMAX", "TMIN", "RAIN", "WIND", "TDEW", "T2M", "RH2M")
@@ -164,13 +166,14 @@ for (i in seq(1, nSites)){
 
 # this comment is where i register my displeasure with having to use dplyr here. 
 
-# create vectors/matrices to store outputs
-petMethods <- c("PriestlyTaylor", "ModPriestlyTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
-petMeans <- matrix(nrow = nSites, ncol = length(petMethods))
-petStdvs <- matrix(nrow = nSites, ncol = length(petMethods))
+# create vectors/arrays to store outputs
+petMethods <- c("PriestlyTaylor", "ModPriesTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
+nMethods <- length(petMethods)
+petMeans <- array(dim=c(nSites, nMethods, nYears))
+petStdvs <- array(dim=c(nSites, nMethods, nYears))
 
 for (i in seq(1, nSites)){
-  petGroup <- group_by(siteList[[i]], inSeason)
+  petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
   petSummary <- summarize(petGroup,
     mean.PriestlyTaylor = mean(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
     mean.ModifiedPriestlyTaylor = mean(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
@@ -186,31 +189,41 @@ for (i in seq(1, nSites)){
     sd.Turc = sd(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE))
   
   # assign this absurd stuff to an output matrix
-  petMeans[i, 1] <- petSummary$mean.PriestlyTaylor[2]
-  petMeans[i, 2] <- petSummary$mean.ModifiedPriestlyTaylor[2]
-  petMeans[i, 3] <- petSummary$mean.Hamon[2]
-  petMeans[i, 4] <- petSummary$mean.Hargreaves[2]
-  petMeans[i, 5] <- petSummary$mean.Linacre[2]
-  petMeans[i, 6] <- petSummary$mean.Turc[2]
-  petStdvs[i, 1] <- petSummary$sd.PriestlyTaylor[2]
-  petStdvs[i, 2] <- petSummary$sd.ModifiedPriestlyTaylor[2]
-  petStdvs[i, 3] <- petSummary$sd.Hamon[2]
-  petStdvs[i, 4] <- petSummary$sd.Hargreaves[2]
-  petStdvs[i, 5] <- petSummary$sd.Linacre[2]
-  petStdvs[i, 6] <- petSummary$sd.Turc[2]
+  petMeans[i, 1,] <- petSummary$mean.PriestlyTaylor
+  petMeans[i, 2,] <- petSummary$mean.ModifiedPriestlyTaylor
+  petMeans[i, 3,] <- petSummary$mean.Hamon
+  petMeans[i, 4,] <- petSummary$mean.Hargreaves
+  petMeans[i, 5,] <- petSummary$mean.Linacre
+  petMeans[i, 6,] <- petSummary$mean.Turc
+  petStdvs[i, 1,] <- petSummary$sd.PriestlyTaylor
+  petStdvs[i, 2,] <- petSummary$sd.ModifiedPriestlyTaylor
+  petStdvs[i, 3,] <- petSummary$sd.Hamon
+  petStdvs[i, 4,] <- petSummary$sd.Hargreaves
+  petStdvs[i, 5,] <- petSummary$sd.Linacre
+  petStdvs[i, 6,] <- petSummary$sd.Turc
 }
 
 # prepare the bar plot for these values
-meanVec <- c(t(petMeans))
-stdVec <- c(t(petStdvs))
-colVec <- rep(siteColors, each = length(petMethods))
+colVec <- rep(siteColors, each = nMethods)
 xlabVec <- rep(petMethods, nSites)
 nVals <- length(meanVec)
 title <- "Potential Evapotranspiration by Site and by Method \n Growing Season: March to April"
 ylab <- "Potential Evapotranspiration"
 
-# set up the bar plot
-barplot2(meanVec, names.arg = xlabVec, las = 2, main = title, ylab = ylab, col = colVec, plot.ci = TRUE, 
-         ci.l = (meanVec - stdVec), ci.u = (meanVec + stdVec))
+# create a 10-panel layout to plot with room for a title
+par(mfrow = c(2,5), oma = c(0,0,2,0))
+
+for (i in seq(1,nYears)){
+  meanVec <- c(t(petMeans[,,i]))
+  stdVec <- c(t(petStdvs[,,i]))
+  
+  # set up the bar plot
+  barplot2(meanVec, names.arg = xlabVec, las = 2, ylab = ylab, col = colVec, plot.ci = TRUE, 
+           ci.l = (meanVec - stdVec), ci.u = (meanVec + stdVec), main = years[i])
+}
+
 legend("topleft", legend = siteNames, col = siteColors, pch = rep(19, nSites))
-plotCI(meanVec, uiw = stdVec, add = TRUE)
+title(title, outer = TRUE)
+
+#############################
+# problem 4 - 
