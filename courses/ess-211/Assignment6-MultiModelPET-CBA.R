@@ -171,6 +171,7 @@ petMethods <- c("PriestlyTaylor", "ModPriesTaylor", "Hamon", "Hargreaves", "Lina
 nMethods <- length(petMethods)
 petMeans <- array(dim=c(nSites, nMethods, nYears))
 petStdvs <- array(dim=c(nSites, nMethods, nYears))
+meanPrecip <- array(dim=c(nSites, nMethods))
 
 for (i in seq(1, nSites)){
   petGroup <- group_by(filter(siteList[[i]], inSeason==TRUE), WEYR)
@@ -181,7 +182,7 @@ for (i in seq(1, nSites)){
     mean.Hargreaves = mean(pet.hargreaves(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
     mean.Linacre = mean(pet.linacre(TMEAN, ELEV, LAT, TDEW), na.rm=TRUE),
     mean.Turc = mean(pet.turc(TMEAN, RH2M, SRAD), na.rm=TRUE),
-    #mean.Precip = mean(RAIN),
+    mean.Precip = mean(RAIN),
     sd.PriestlyTaylor = sd(pet.priestlyTaylor(WEDAY, TMAX, TMIN, TMEAN, RH2M, TDEW, SRAD, ELEV, LAT), na.rm=TRUE),
     sd.ModifiedPriestlyTaylor = sd(pet.modifiedPriestlyTaylor(TMAX, TMIN, SRAD), na.rm=TRUE),
     sd.Hamon = sd(pet.hammon(WEDAY, TMAX, TMIN, TMEAN, LAT), na.rm=TRUE),
@@ -202,6 +203,7 @@ for (i in seq(1, nSites)){
   petStdvs[i, 4,] <- petSummary$sd.Hargreaves
   petStdvs[i, 5,] <- petSummary$sd.Linacre
   petStdvs[i, 6,] <- petSummary$sd.Turc
+  meanPrecip[i,] <- petSummary$mean.Precip
   
   # create new columns to analyze in problem 5
   #siteList[[i]]["meanPriestlyTaylor"] = rep(petSummary$mean.PriestlyTaylor, nrow(siteList[[i]]))
@@ -303,7 +305,6 @@ title(title, outer = TRUE)
 #  original P(everyValue)-PET(everyValue) calculations. smaller residuals
 #  should mean the variance in whatever parameter used every value
 #  was more important in driving the P-PET signal
-
 
 # so calculate P(yearlyMean) - PET(everyValue) and P(everyValue) - PET(yearlyMean)
 pmeanmPETMeans <- array(dim=c(nSites, nMethods, nYears))
