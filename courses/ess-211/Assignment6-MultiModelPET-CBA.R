@@ -172,7 +172,7 @@ for (i in seq(1, nSites)){
 #############################
 # problem 3 computing seasonal PET for each year
 
-# this comment is where i register my displeasure with having to use dplyr here. 
+# this comment is where i register my displeasure with having to use dplyr. 
 
 # create vectors/arrays to store outputs
 petMethods <- c("PriestlyTaylor", "ModPriesTaylor", "Hamon", "Hargreaves", "Linacre", "Turc")
@@ -439,15 +439,6 @@ for (i in 1:nSites){
 
 #############################
 # problem 6 - climate modeling
-
-lowTChangePET[i,] <- petSummary$mean.lowTChangePET
-lowTChangePmPET[i,] <- petSummary$mean.lowTChangePmPET
-highTChangePET[i,] <- petSummary$mean.highTChangePET
-highTChangePmPET[i,] <- petSummary$mean.highTChangePmPET
-lowPChangePET[i,] <- petSummary$mean.lowPChangePET
-lowPChangePmPET[i,] <- petSummary$mean.lowPChangePmPET
-highPChangePET[i,] <- petSummary$mean.highPChangePET
-highPChangePmPET[i,] <- petSummary$mean.highPChangePmPET
 
 # set up the plot utility
 par(mfrow = c(2,4), oma = c(0,0,2,0))
