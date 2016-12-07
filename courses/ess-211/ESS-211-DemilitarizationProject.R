@@ -383,9 +383,15 @@ vetPopulationT0 <- growth.exponential(ww2ServiceMembers, deathRate.ww2, (yearly$
 vetMins <- c(-0.2, 0.05, vetPopulationT0 * 0.8)
 vetMaxs <- c(-0.005, 0.15, vetPopulationT0 * 1.2)
 
+# get indices for years with no enlistment data
+enlistmentIndices = is.na(yearly$TotalEnlistment)
+
 # we have to set unknown enlistment numbers. based on the data, I will forecast future enlistment to be the mean
 #  of the bush/obama era.
-yearly$TotalEnlistment[is.na(yearly$TotalEnlistment)] = mean(yearly$TotalEnlistment[(which(yearly$Year==2000)):(which(yearly$Year==2014))])
+yearly$TotalEnlistment[enlistmentIndices] = mean(yearly$TotalEnlistment[(which(yearly$Year==2000)):(which(yearly$Year==2014))])
+
+# or, set enlistment to 0 to try and get just the rates based on the data's assumption of no new vets
+yearly$TotalEnlistment[enlistmentIndices] = 0
 
 # now run the calibration 
 nGuesses = 20
@@ -395,3 +401,55 @@ vetParams <- veterans.calibrateRates(vetMins, vetMaxs, nGuesses, nFolds, yearly)
 # with these parameters, we can assess k-fold cross-validation error
 yIndices <- which(is.na(yearlyData$TotalVeterans) == FALSE)
 yGroups <- cut(1:length(yIndices), nFolds, label = FALSE)
+
+# calculate the calibration and cross-validation r^2 and rmse
+vetCorr <- matrix(nrow = nFolds, ncol = 2)
+vetRMSE <- matrix(nrow = nFolds, ncol = 2)
+
+for (i in 1:nFolds){
+  
+  # apply the model
+  vetApplied = veterans.deathDelistmentRates(colMeans(vetParams[[i]]), yearly$Year[2:nrow(yearly)], yearly)
+  
+  # add the t0 data (since we model from year 2+ using t0 as a parameter)
+  vetApplied = append(colMeans(vetParams[[i]])[3], vetApplied)
+  
+  # set calibration and validation r^2
+  vetCorr[i, 1] = cor(yearly$TotalVeterans[yIndices[yGroups == i]], vetApplied[yIndices[yGroups == i]])
+  vetCorr[i, 2] = cor(yearly$TotalVeterans[yIndices[yGroups != i]], vetApplied[yIndices[yGroups != i]])
+  
+  # set calibration and validation RMSE
+  vetRMSE[i, 1] <- sqrt(mean((yearly$TotalVeterans[yIndices[yGroups == i]] - vetApplied[yIndices[yGroups == i]])^2))
+  vetRMSE[i, 2] <- sqrt(mean((yearly$TotalVeterans[yIndices[yGroups != i]] - vetApplied[yIndices[yGroups != i]])^2))
+}
+
+# the correlation coefficients are all 0.98 and above, so we won't bother plotting, but we'll plot the cal/val rmses
+ylim = c(min(vetRMSE), max(vetRMSE))
+xlab = 'Fold'
+ylab = 'RMSE'
+title = "Veteran population RMSE by fold"
+legend = c("Calibration", "Validation")
+barplot(vetRMSE[,1], col = colReal, ylim = ylim, main = title, xlab = xlab, ylab = ylab)
+par(new=TRUE)
+barplot(vetRMSE[,2], col = colPred, ylim = ylim, main = title, xlab = xlab, ylab = ylab)
+legend("top", legend = legend, col = c(colReal, colPred), pch = c(19,19))
+
+# let's perform some sensitivity analysis of this model
+
+# define the parameter names
+vetNames <- c("DeathRate", "DelistmentRate", "t0 Veteran Population")
+
+# set n parameters
+k <- length(vetMins)
+
+# n times to compute effect for each parameter
+r <- 10
+
+# n possible levels for each parameter (should be an even #)
+p <- 4
+
+# the increment to adjust parameter values by
+delta <- p / (2 * (p - 1))
+
+# run the morris script
+script.morris(vetMins, vetMaxs, vetNames, "Morris Sensitivity Analysis\nVeteran Populations", k, r, p, delta, veterans.deathDelistmentRates)

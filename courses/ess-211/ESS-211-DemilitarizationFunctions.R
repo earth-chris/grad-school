@@ -187,7 +187,7 @@ unemployment.framework3 <- function(dframe, sd, per = NA){
 #############################
 # modeling veteran populations based on death / de-enlistment rates. 
 #  will calibrate this model to derive the first parameter set
-veterans.deathDelistmentRates <- function(deathDelistmentRates, years, yearlyData){
+veterans.deathDelistmentRates <- function(deathDelistmentRates, years=c(2013), yearlyData=yearly){
   
   # the deathDelistment rates contain the vectors for 1) the exponential rate of death and 
   #  2) the linear delistment rate, and 3) the veteran population at t0
@@ -213,8 +213,8 @@ veterans.deathDelistmentRates <- function(deathDelistmentRates, years, yearlyDat
     
     # loop through each year and add/subtract vets based on delistment/death
     for (j in seq(1, nYears)){
-      vetPopulation <- vetPopulation + delistment[j]
       vetPopulation <- growth.exponential(vetPopulation, deathRate, 1)
+      vetPopulation <- vetPopulation + delistment[j]
     }
     
     # calculate the number of veteran as (delistment rate * yearly enlisted population) + t0population * e^rt

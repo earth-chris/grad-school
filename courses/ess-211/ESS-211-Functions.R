@@ -493,6 +493,43 @@ vsa <- function(fun, par.mins, par.maxs, nrun){
   }
   return(list(S,ST))
 }
+
+# a way to script the morris calculations
+script.morris <- function(mins, maxs, names, title, k, r, p, delta, fun){
+  
+  # set midpoints for each parameter
+  par.mids <- 0.5 * (mins + maxs)
+  
+  # set n parameters
+  npars <- length(mins)
+  
+  # run morris method for the function
+  effects <- morris(k, r, p, delta, mins, maxs, fun)
+  
+  # calculate mean effect
+  mu <- apply(effects, 1, mean)
+  
+  # calculate sd effect
+  sigma <- apply(effects, 1, sd)
+  
+  # calculate mean absolute effect
+  mu.star <- apply(abs(effects), 1, mean)
+  
+  # set up some plotting params
+  pch <- rep(19, npars)
+  cex <- rep(3, npars)
+  cols <- rainbow(npars)
+  xlab <- "Mean absolute effect"
+  ylab <- "SD effect"
+  
+  # plot the results
+  plot(mu.star, sigma, pch = pch, main = title, col = cols, xlab = xlab, ylab = ylab, cex=cex)
+  legend("topleft", legend = names, pch = pch, col = cols)
+  
+  # return the effects
+  return(list(mu, sigma, mu.star))
+}
+
 #############################
 # functions for assignment 6
 
