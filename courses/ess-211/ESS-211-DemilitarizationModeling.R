@@ -25,9 +25,16 @@ yearly <- read.csv('demilitarization_project/YearlyData.csv', header = TRUE)
 year.start <- 1954
 year.end <- 2016
 
+# set the retirement rate 
+rate.retirement <- 0.1
+
 # set the number of years for demilitarization
 year.demil <- 10
 
-model.demil <- function(population, enlistment, fedSpending, milSpending, vetSpending, unemployment, laborParticipation, demographics){
+model.demila <- function(population, enlistment, fedSpending, milSpending, vetSpending, unemployment, laborParticipation, demographics){
   
+}
+model.demil <- function(population, enlistment, milSpending, vetSpending, unemployment, laborParticipation, demilRate){
+  ratio <- (milSpending * demilRate) / ((laborParticipation * population * 10e6 * unemployment) + (enlistment * demilRate))
+  return(ratio)
 }

@@ -228,6 +228,7 @@ par(new = TRUE)
 plot(yearly$Year, milSpending.predicted.poly, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
+title <- "Actual and Modeled (logistic) Military Spending"
 legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.milSpending.log, nsmall = 2)))
 ylim <- c(min(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE), 
           max(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE))
@@ -282,6 +283,7 @@ par(new = TRUE)
 plot(yearly$Year, vetSpending.predicted.poly, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
+title <- "Actual and Modeled (logistic) Veteran Spending"
 legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.vetSpending.log, nsmall = 2)))
 ylim <- c(min(yearly$VeteranSpending.BUSD, vetSpending.predicted.log, na.rm = TRUE), 
           max(yearly$VeteranSpending.BUSD, vetSpending.predicted.log, na.rm = TRUE))
@@ -315,3 +317,59 @@ framework2 <- unemployment.framework2(yearly, unemployment.sd)
 
 # run framework 3
 framework3 <- unemployment.framework3(yearly, unemployment.sd)
+
+# calculate rmses
+rmse.framework1 <- sqrt(mean((yearly$UnemploymentRate[unemployment.years] - framework1[unemployment.years])^2))
+rmse.framework2 <- sqrt(mean((yearly$UnemploymentRate[unemployment.years] - framework2[unemployment.years])^2))
+rmse.framework3 <- sqrt(mean((yearly$UnemploymentRate[unemployment.years] - framework3[unemployment.years])^2))
+
+# plot em
+ylim <- c(min(yearly$UnemploymentRate, framework1, na.rm = TRUE), 
+          max(yearly$UnemploymentRate, framework1, na.rm = TRUE))
+xlab = "Year"
+ylab = "Unemployment Rate"
+title = "Yearly US Unemployment"
+legend = c("Real Unemployment Rate", "Mean + Noise Unemployment", paste("RMSE:", format(rmse.framework1, nsmall = 2)))
+plot(yearly$Year, yearly$UnemploymentRate, type = 'l', xlab = xlab, ylab = xlab, main = title, ylim = ylim, lwd=lwd[2])
+par(new=TRUE)
+plot(yearly$Year, framework1, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim)
+legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
+
+legend = c("Real Unemployment Rate", "Trendline + Noise Unemployment", paste("RMSE:", format(rmse.framework2, nsmall = 2)))
+plot(yearly$Year, yearly$UnemploymentRate, type = 'l', xlab = xlab, ylab = xlab, main = title, ylim = ylim, lwd=lwd[2])
+par(new=TRUE)
+plot(yearly$Year, framework2, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim)
+legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
+
+legend = c("Real Unemployment Rate", "Sin Curve + Noise Unemployment", paste("RMSE:", format(rmse.framework3, nsmall = 2)))
+plot(yearly$Year, yearly$UnemploymentRate, type = 'l', xlab = xlab, ylab = xlab, main = title, ylim = ylim, lwd=lwd[2])
+par(new=TRUE)
+plot(yearly$Year, framework3, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim)
+legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
+
+#############################
+# modeling veteran populations
+
+# we don't have veteran population data for our historical records, but we want it for the future and
+#  historical estimates to find the number of enlistments prevented, so we can project the difference 
+#  in what would have been spent on veteran's costs.
+#  we have other data starting 1954, but we want to know the veteran population then.
+#  world wars I & II were the last wars where the majority of enlistees would have gone from the enlistmnet
+#  to the veterans communities, but we don't have any death rate esimates for WWI. We do, however, 
+#  for WWII. so we'll model the number of veterans based on their veteran populations
+
+# total service members serving world war two minus battle and non-theater deaths
+ww2ServiceMembers <- 16112566 - 291557 - 113842
+
+# and the living veterans
+ww2LivingVeterans <- 1711000
+
+# set start and end years for calculation
+ww2t0 <- 1945
+ww2t1 <- 2016
+
+# find the growth rate
+deathRate.ww2 <- growth.calc.r(ww2ServiceMembers, ww2LivingVeterans, (ww2t1 - ww2t0))
+
+# then estimate the number of veterans at 1954
+vetPopulationT0 <- growth.exponential(ww2ServiceMembers, deathRate.ww2, (yearly$Year[1] - ww2t0))

@@ -185,6 +185,66 @@ unemployment.framework3 <- function(dframe, sd, per = NA){
 }
 
 #############################
+# modeling veteran populations based on death / de-enlistment rates. 
+#  will calibrate this model to derive the first parameter set
+veterans.deathDelistmentRates <- function(deathDelistmentRates, years, yearlyData){
+  
+  # the deathDelistment rates contain the vectors for 1) the exponential rate of death and 
+  #  2) the linear delistment rate, and 3) the veteran population at t0
+  deathRate <- deathDelistmentRates[1]
+  delistmentRate <- deathDelistmentRates[2]
+  vetPopulationT0 <- deathDelistmentRates[3]
+  
+  # set up the output vector based on the number of years we are analyzing
+  nVeterans <- rep(0, length(years))
+  
+  # loop through each year we're trying to get veteran population for
+  for (i in seq(1,length(years))){
+    
+    # get the right indices
+    yearInds <- which(yearlyData$Year == years[i])
+    nYears <- years[i] - yearlyData$Year[1]
+    
+    # calculate the delistment per year
+    delistment <- delistmentRate * yearlyData$TotalEnlistment[1:yearInds]
+    
+    # set the veteran population to add to/subtract from each year
+    vetPopulation <- vetPopulationT0
+    
+    # loop through each year and add/subtract vets based on delistment/death
+    for (j in seq(1, nYears)){
+      vetPopulation <- growth.exponential(vetPopulation, deathRate, 1) + delistment[j]
+    }
+    
+    # calculate the number of veteran as (delistment rate * yearly enlisted population) + t0population * e^rt
+    nVeterans[i] <- vetPopulation
+  }
+  return(nVeterans)
+}
+
+# set up a function to calibrate the veterans model
+veterans.calibrateRates <- function(mins, maxs, nGuesses, nFolds, yearlyData){
+  
+  # create a matrix to store the outputs
+  optMatrix <- matrix(nrow = nGuesses, ncol = 3)
+  
+  # create a series of random pulls from the min/max of each parameter
+  random.par1 <- runif(nGuesses, min = mins[1], max = maxs[1])
+  random.par2 <- runif(nGuesses, min = mins[2], max = maxs[2])
+  random.par3 <- runif(nGuesses, min = mins[3], max = maxs[3])
+  
+  # create the cross-folds
+  yIndices <- which(is.na(yearlyData$TotalVeterans) == FALSE)
+  yGroups <- cut(1:len(yIndices), nFolds, label = FALSE)
+  
+  # loop through each fold and 
+}
+
+opt <- optim(par0, minfunc, loss=loss.rmse, model=bucket3, y=runoff, P=P, 
+             PET=PET, method='L-BFGS-B', lower=bounds.lower ,upper=bounds.upper)
+
+
+#############################
 # basic model functions
 
 # a function to get the indices for years to model
