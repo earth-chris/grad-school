@@ -373,3 +373,25 @@ deathRate.ww2 <- growth.calc.r(ww2ServiceMembers, ww2LivingVeterans, (ww2t1 - ww
 
 # then estimate the number of veterans at 1954
 vetPopulationT0 <- growth.exponential(ww2ServiceMembers, deathRate.ww2, (yearly$Year[1] - ww2t0))
+
+# the above was done to get a general estimate for the total number of WWII veterans that would have been 
+#  alive at our t0 (1954). I then took a range around that number, and growth rates, and decided to perform
+#  a model calibration to get historic veteran population data
+
+# the model takes 3 args we'll vary: 1) the veteran death rate, 2) the average delistment rate, and 
+#  3) the veteran population at t0. 
+vetMins <- c(-0.2, 0.05, vetPopulationT0 * 0.8)
+vetMaxs <- c(-0.005, 0.15, vetPopulationT0 * 1.2)
+
+# we have to set unknown enlistment numbers. based on the data, I will forecast future enlistment to be the mean
+#  of the bush/obama era.
+yearly$TotalEnlistment[is.na(yearly$TotalEnlistment)] = mean(yearly$TotalEnlistment[(which(yearly$Year==2000)):(which(yearly$Year==2014))])
+
+# now run the calibration 
+nGuesses = 20
+nFolds = 5
+vetParams <- veterans.calibrateRates(vetMins, vetMaxs, nGuesses, nFolds, yearly)
+
+# with these parameters, we can assess k-fold cross-validation error
+yIndices <- which(is.na(yearlyData$TotalVeterans) == FALSE)
+yGroups <- cut(1:length(yIndices), nFolds, label = FALSE)
