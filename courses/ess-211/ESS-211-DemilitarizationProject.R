@@ -30,7 +30,7 @@ endYear <- max(yearly$Year)
 # set the limits on spending
 maxSpending.fed <- 8000 # in billions of USD
 maxSpending.mil <- 800 # in billions of USD
-maxSpending.vet <- maxSpending.mil # assumes max budget for vets will be at least how much we spend on active military
+maxSpending.vet <- maxSpending.mil / 2 # assumes max budget for vets will be half we spend on active military
 
 # set plotting parameters
 colDem <- add.alpha("Blue", 0.6)
@@ -383,8 +383,8 @@ vetPopulationT0 <- growth.exponential(ww2ServiceMembers, deathRate.ww2, (yearly$
 vetMins <- c(-0.2, 0.05, vetPopulationT0 * 0.8)
 vetMaxs <- c(-0.005, 0.15, vetPopulationT0 * 1.2)
 
-# get indices for years with no enlistment data
-enlistmentIndices = is.na(yearly$TotalEnlistment)
+# get indices for years beyond start date
+enlistmentIndices = which(yearly$Year >= 2013)
 
 # we have to set unknown enlistment numbers. based on the data, I will forecast future enlistment to be the mean
 #  of the bush/obama era.
@@ -393,9 +393,11 @@ yearly$TotalEnlistment[enlistmentIndices] = mean(yearly$TotalEnlistment[(which(y
 # or, set enlistment to 0 to try and get just the rates based on the data's assumption of no new vets
 yearly$TotalEnlistment[enlistmentIndices] = 0
 
-# now run the calibration 
+# set parameters for cross-calibration
 nGuesses = 20
 nFolds = 5
+
+# now run the k-fold calibration - warning, takes a bit
 vetParams <- veterans.calibrateRates(vetMins, vetMaxs, nGuesses, nFolds, yearly)
 
 # with these parameters, we can assess k-fold cross-validation error
@@ -451,5 +453,44 @@ p <- 4
 # the increment to adjust parameter values by
 delta <- p / (2 * (p - 1))
 
-# run the morris script
+# run the morris script, which produces a plot
 script.morris(vetMins, vetMaxs, vetNames, "Morris Sensitivity Analysis\nVeteran Populations", k, r, p, delta, veterans.deathDelistmentRates)
+
+# and run the vsa script
+nRandom = 500
+vetVsa <- vsa(veterans.deathDelistmentRates, vetMins, vetMaxs, nRandom)
+
+# then produce our own plot
+xlab <- "Main effects"
+ylab <- "Total effects"
+title <- "Variance-based Sensitivity Analysis\nVeteran Populations"
+pch <- rep(19, k)
+cols <- rainbow(k)
+cex <- rep(3, k)
+plot(vetVsa[[1]], vetVsa[[2]], pch = pch, main = title, col = cols, xlab = xlab, ylab = ylab)
+legend("topleft", legend = vetNames, pch = pch, col = cols)
+
+# then we'll plot some of the outputs
+foldToUse = 5
+yearly$TotalEnlistment[enlistmentIndices] = 0
+vetApplied = veterans.deathDelistmentRates(colMeans(vetParams[[foldToUse]]), yearly$Year[2:nrow(yearly)], yearly)
+vetApplied = append(colMeans(vetParams[[foldToUse]])[3], vetApplied)
+vetAppliedOrig = vetApplied
+yearly$TotalEnlistment[enlistmentIndices] = mean(yearly$TotalEnlistment[(which(yearly$Year==2000)):(which(yearly$Year==2014))])
+vetApplied = veterans.deathDelistmentRates(colMeans(vetParams[[foldToUse]]), yearly$Year[2:nrow(yearly)], yearly)
+vetApplied = append(colMeans(vetParams[[foldToUse]])[3], vetApplied)
+ylim = c(min(append(vetApplied, append(vetAppliedOrig, yearly$TotalVeterans)), na.rm=TRUE), 
+         max(append(vetApplied, append(vetAppliedOrig, yearly$TotalVeterans)), na.rm=TRUE))
+xlab = "Year"
+ylab = "Veteran Population"
+title = "Modeled vs Real US Veteran Population"
+legend = c("No new veterans", "With new veterans", "VA Projections")
+cols = c(colMil, colFed, colReal)
+lwd = c(2, 2, 2)
+lty = c(1, 1, 2)
+plot(yearly$Year, vetApplied, type='l', xlab = xlab, ylab = ylab, main = title, lwd = lwd[2], col = cols[2], ylim=ylim)
+par(new = TRUE)
+plot(yearly$Year, vetAppliedOrig, type='l', xlab = xlab, ylab = ylab, main = title, lwd = lwd[1], col = cols[1], ylim=ylim)
+par(new = TRUE)
+plot(yearly$Year, yearly$TotalVeterans, type='l', xlab = xlab, ylab = ylab, main = title, lwd = lwd[3], col = cols[3], ylim=ylim, lty=lty[3])
+legend("bottom", legend=legend, lty=lty, col=cols, lwd=lwd)

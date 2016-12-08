@@ -271,9 +271,22 @@ veterans.calibrateRates <- function(mins, maxs, nGuesses, nFolds, yearlyData){
   return(optList)
 }
 
+#############################
+# inflation rate functions
+
+# takes historic spending data and adjusts it to 2016 USD
+inflation.adjust <- function(values, rates){
+  
+  # find the data to use
+  inds <- which(is.na(rates) == FALSE)
+  
+  # loop through each year and adjust
+  for (i in 1:(length(inds)-1)){
+    for(j in (i+1):length(inds)){
+      values[i] <- growth.exponential(values[i], rates[j], 1)
+    }
+  }
+  return(values)
+}
 
 #############################
-# basic model functions
-
-# a function to get the indices for years to model
-#seq(year.start, year.end-year.demil, by=year.demil)
