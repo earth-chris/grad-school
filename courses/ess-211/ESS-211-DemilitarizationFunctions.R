@@ -323,21 +323,21 @@ inflation.adjust <- function(values, rates){
 # functions to calculate demilitarization rates
 
 # linear demilitarization rate
-demil.linear <- function(enlistmentT0, nYears){
+demil.linear <- function(enlistmentT0, minEnlistment, nYears){
   
   # get the linear rate
-  demilRate <- enlistmentT0 / nYears
+  demilRate <- (enlistmentT0 - minEnlistment) / nYears
   
   # calculate the output enlistment numbers
-  enlistment <- seq(nYears, 1) * demilRate
+  enlistment <- seq((nYears-1), 0) * demilRate
   return(enlistment)
 }
 
 # exponential demilitarization rate
-demil.exp <- function(enlistmentT0, nYears){
+demil.exp <- function(enlistmentT0, minEnlistment, nYears){
   
   # get the exponential rate
-  demilRate <- growth.calc.r(enlistmentT0, 0, nYears + 1)
+  demilRate <- growth.calc.r(enlistmentT0, minEnlistment, nYears + 1)
   
   # calculate the output enlistment numbers
   enlistment <- growth.exponential.apply(enlistmentT0, demilRate, nYears)
@@ -354,14 +354,110 @@ demil.exp <- function(enlistmentT0, nYears){
 #  b) the total money saved on veteran's costs (for n years beyond the start of demilitarization)
 
 # create a function to calculate labor index
-labor.index <- function(newLabor, population, laborParticipation, unemployment, newSpending){
+labor.index <- function(newLabor, population, laborParticipation, unemployment, newSpending, fedSpending){
   
   # calculate number of unemployed
   nUnemployed <- population * laborParticipation * unemployment
   
   # calculate the labor index
-  laborIndex <- (newLabor / nUnemployed) * newSpending
+  laborIndex <- (newSpending / fedSpending) / (newLabor / nUnemployed) 
   return(laborIndex)
 }
 
-# create a function to calculate 
+# create a version for sensitivity analysis
+labor.index.sa <- function(params){
+  
+  # extrapolate the values based on a single vector input
+  newLabor <- params[1] 
+  population <- params[2] 
+  laborParticipation <- params[3] 
+  unemployment <- params[4] 
+  newSpending <- params[5] 
+  fedSpending <- params[6]
+  
+  # calculate number of unemployed
+  nUnemployed <- population * laborParticipation * unemployment
+  
+  # calculate the labor index
+  laborIndex <- (newSpending / fedSpending) / (newLabor / nUnemployed) 
+  return(laborIndex)
+}
+
+# this is the big model
+demil.model <- function(nYears, demilFunction, minEnlistment, deathDelistmentRates, data, returnParameter, plot = FALSE){
+  # where:
+  #  nYears = the number of years over which demilitarization occurrs
+  #  demilFuntion = the method used to calculate demilitarization (e.g. linear, exponential)
+  #  minEnlistment = the minimum number of service members to keep (can be set to ~0)
+  #  data = the data frame with expected variable types (e.g. $GDP.BUSD, etc.)
+  #  returnParameter specifies whether to return veterans spending data
+  #   or laborIndex data
+  
+  # get years to process
+  nRows <- length(data$Year)
+  startYear <- data$Year[1]
+  endYear <- data$Year[nRows-nYears]
+  startInd <- 1
+  endInd <- which(data$Year == endYear)
+  
+  # calculate the baseline veteran population
+  data$TotalVeterans[1] <- deathDelistmentRates[3]
+  data$TotalVeterans[2:nRows] <- veterans.deathDelistmentRates(deathDelistmentRates, years = (startYear+1):(startYear+nRows-1), yearlyData = data)
+  
+  # convert populations from millions of people to just # people
+  data$TotalPopulation <- data$TotalPopulation * 10e6
+  
+  # calculate the business as usual per-capita veteran spending
+  data['PerCapitaVeteranSpending'] = data$VeteranSpending.BUSD / data$TotalVeterans
+  
+  # loop through each year and calculate metrics
+  for (yearInd in startInd:endInd){
+    
+    # create a new data frame to store outputs
+    dataModel <- data
+    
+    # calculate the number of soldiers delisting
+    delistSoldiers <- demilFunction(data$TotalEnlistment[yearInd], minEnlistment, nYears)
+    
+    # don't consider fractions of humans, because that is bad.
+    delistSoldiers <- ceiling(delistSoldiers)
+    
+    # set the delistment data in the data frame, and set future enlistment to the minimum enlistment
+    dataModel$TotalEnlistment[yearInd:(yearInd + nYears - 1)] <- delistSoldiers
+    dataModel$TotalEnlistment[(yearInd + nYears):nRows] <- minEnlistment
+    
+    # do the same for military spending, but first, calculate per-capita mil spending at the time
+    #  to determine what minimum spending will be at minimum enlistment
+    minSpending <- data$MilitarySpending.BUSD[yearInd] / data$TotalEnlistment[yearInd]
+    delistSpending <- demilFunction(data$MilitarySpending.BUSD[yearInd], minSpending, nYears)
+    dataModel$MilitarySpending.BUSD[yearInd:(yearInd + nYears - 1)] <- delistSpending
+    dataModel$MilitarySpending.BUSD[(yearInd + nYears):nRows] <- minSpending
+    
+    # calculate the number of soldiers entering the economy per year
+    enteringSoldiers <- vector(length = nYears)
+    enteringSoldiers[1] <- data$TotalEnlistment[yearInd] - delistSoldiers[1]
+    for (i in 2:nYears){
+      enteringSoldiers[i] <- delistSoldiers[i-1] - delistSoldiers[i]
+    }
+    
+    # and calculate the amount of money entering the economy
+    enteringSpending <- vector(length = nYears)
+    enteringSpending[1] <- data$MilitarySpending.BUSD[yearInd] - delistSpending[1]
+    for (i in 2:nYears){
+      enteringSpending[i] <- delistSpending[i-1] - delistSpending[i]
+    }
+    
+    # then calculate the labor index for each year
+    laborIndex <- vector(length = nYears)
+      for (i in 1:nYears){
+      laborIndex[i] <- labor.index(enteringSoldiers[i], data$TotalPopulation[i], data$LaborParticipationRate[i],
+                                   data$UnemploymentRate[i], enteringSpending[i], data$FedSpending.BUSD[i])
+    }
+    
+    # the number of service members entering the economy is also the number of people that enter the 
+    #  veteran population. add them here
+    dataModel$TotalVeterans[yearInd:(yearInd + nYears - 1)] <- dataModel$TotalVeterans[yearInd:(yearInd + nYears - 1)] + enteringSoldiers
+    
+    # calculate the veteran populations 
+  }
+}

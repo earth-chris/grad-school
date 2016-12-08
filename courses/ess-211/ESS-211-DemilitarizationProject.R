@@ -535,3 +535,54 @@ legend("bottom", legend=legend, lty=lty, col=cols, lwd=lwd)
 # the idea is that we'll have two potential model outputs to measure the effect of demilitarization
 #  a) the highest ratio of people added to the labor force times the amount of money freed from demilitarization, and 
 #  b) the total money saved on veteran's costs (for n years beyond the start of demilitarization)
+
+# perform SA on the DLI (labor index) model
+
+# define the parameter names
+pNames <- c("newLabor", "Population", "laborParticipation", "Unemployment", "newSpending", "fedSpending")
+
+# set mins/maxs
+minDelist <- 0.1 * min(yearly$TotalEnlistment, na.rm = TRUE)
+maxDelist <- 0.1 * max(yearly$TotalEnlistment, na.rm = TRUE)
+minPop <- min(yearly$TotalPopulation, na.rm = TRUE)
+maxPop <- max(yearly$TotalPopulation, na.rm = TRUE)
+minLabor <- min(yearly$LaborParticipationRate, na.rm = TRUE)
+maxLabor <- max(yearly$LaborParticipationRate, na.rm = TRUE)
+minUnemp <- min(yearly$UnemploymentRate, na.rm = TRUE)
+maxUnemp <- max(yearly$UnemploymentRate, na.rm = TRUE)
+minMil <- 0.1 * min(yearly$MilitarySpending.BUSD, na.rm = TRUE)
+maxMil <- 0.1 * max(yearly$MilitarySpending.BUSD, na.rm = TRUE)
+minFed <- min(yearly$FedSpending.BUSD, na.rm = TRUE)
+maxFed <- max(yearly$FedSpending.BUSD, na.rm = TRUE)
+pMins <- c(minDelist, minPop, minLabor, minUnemp, minMil, minFed)
+pMaxs <- c(maxDelist, maxPop, maxLabor, maxUnemp, maxMil, maxFed)
+
+# set n parameters
+k <- length(pMins)
+
+# n times to compute effect for each parameter
+r <- 100
+
+# n possible levels for each parameter (should be an even #)
+p <- 10
+
+# the increment to adjust parameter values by
+delta <- p / (2 * (p - 1))
+
+# run the morris script, which produces a plot
+script.morris(pMins, pMaxs, pNames, "Morris Sensitivity Analysis\nDemilitarized Labor Index", k, r, p, delta, labor.index.sa)
+
+# then we'll run VSA
+nRandom = 500
+dliVsa <- vsa(labor.index.sa, pMins, pMaxs, nRandom)
+
+# then produce our own plot
+xlab <- "Main effects"
+ylab <- "Total effects"
+title <- "Variance-based Sensitivity Analysis\nDemilitarized Labor Index"
+pch <- rep(19, k)
+cols <- rainbow(k)
+cex <- rep(3, k)
+plot(dliVsa[[1]], dliVsa[[2]], pch = pch, main = title, col = cols, xlab = xlab, ylab = ylab, cex=cex)
+legend("topleft", legend = pNames, pch = pch, col = cols)
+
