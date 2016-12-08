@@ -110,6 +110,36 @@ growth.logistic <- function(x, y, phi1, phiIndex){
   return(model)
 }
 
+# set up a sinusoidal growth model
+growth.sin <- function(x, y, sd, per = NA){
+  
+  # get indices for good data
+  growth.inds <- which(is.na(y) == FALSE)
+  
+  # generate some noise
+  noise <- rnorm(length(x), sd = sd)
+  
+  # set x and y vars
+  xOrig <- x
+  yOrig <- y
+  x <- x[growth.inds]
+  y <- y[growth.inds]
+  
+  # calculate the spectrum and period of the data, if not set
+  ssp <- spectrum(y, plot=FALSE)
+  if (is.na(per)){
+    per <- 1 / ssp$freq[ssp$spec == max(ssp$spec)]
+  }
+  
+  # least squares fit the data
+  linearModel <- lm(y ~ sin(2 * pi / per * x) + cos(2 * pi / per * x))
+  
+  # apply the fit to the data and add noise
+  predicted <- predict(linearModel, data.frame(x = xOrig, y = yOrig))
+  sinModel <- predicted + noise
+  return(sinModel)
+}
+
 #############################
 # unemployment modeling
 
@@ -290,3 +320,48 @@ inflation.adjust <- function(values, rates){
 }
 
 #############################
+# functions to calculate demilitarization rates
+
+# linear demilitarization rate
+demil.linear <- function(enlistmentT0, nYears){
+  
+  # get the linear rate
+  demilRate <- enlistmentT0 / nYears
+  
+  # calculate the output enlistment numbers
+  enlistment <- seq(nYears, 1) * demilRate
+  return(enlistment)
+}
+
+# exponential demilitarization rate
+demil.exp <- function(enlistmentT0, nYears){
+  
+  # get the exponential rate
+  demilRate <- growth.calc.r(enlistmentT0, 0, nYears + 1)
+  
+  # calculate the output enlistment numbers
+  enlistment <- growth.exponential.apply(enlistmentT0, demilRate, nYears)
+}
+
+#############################
+# ok, so now that we have veteran population data to analyze, we'll start running our actual model, where we vary
+#  a) when demilitarization occurs
+#  b) over how man years it occurs
+#  c) whether we use historic or modeled data
+#
+# the idea is that we'll have two potential model outputs to measure the effect of demilitarization
+#  a) the highest ratio of people added to the labor force times the amount of money freed from demilitarization, and 
+#  b) the total money saved on veteran's costs (for n years beyond the start of demilitarization)
+
+# create a function to calculate labor index
+labor.index <- function(newLabor, population, laborParticipation, unemployment, newSpending){
+  
+  # calculate number of unemployed
+  nUnemployed <- population * laborParticipation * unemployment
+  
+  # calculate the labor index
+  laborIndex <- (newLabor / nUnemployed) * newSpending
+  return(laborIndex)
+}
+
+# create a function to calculate 

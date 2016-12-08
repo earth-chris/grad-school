@@ -41,10 +41,17 @@ colPred <- add.alpha("Dark Green", 0.8)
 colReal <- add.alpha("Black", 0.8)
 
 #############################
+# adjust all USD measurements for inflation
+yearly$GDP.BUSD <- inflation.adjust(yearly$GDP.BUSD, yearly$InflationRate)
+yearly$FedSpending.BUSD <- inflation.adjust(yearly$FedSpending.BUSD, yearly$InflationRate)
+yearly$MilitarySpending.BUSD <- inflation.adjust(yearly$MilitarySpending.BUSD, yearly$InflationRate)
+yearly$VeteranSpending.BUSD <- inflation.adjust(yearly$VeteranSpending.BUSD, yearly$InflationRate)
+
+#############################
 # create some exploratory plots
 
 # number of unique conflicts per year
-cols <- rep("", nrow(yearly))
+cols <- rep(NA, nrow(yearly))
 cols[yearly$PresidentialParty == "Republican"] = colRep
 cols[yearly$PresidentialParty == "Democrat"] = colDem
 ylab <- "Number of Unique Conflicts"
@@ -144,17 +151,14 @@ legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 fedSpending.polynomial <- growth.polynomial(yearly$Year[fitYears], yearly$FedSpending.BUSD[fitYears], degree = 2)
 fedSpending.predicted.poly <- predict(fedSpending.polynomial, data.frame(x = yearly$Year))
 
-# calculate rmse for exponential growth
+# calculate rmse for polynomial growth
 rmse.fedSpending.poly <- sqrt(mean(residuals(fedSpending.polynomial)^2))
 
 # plot the output
-ylab <- "Total Federal Spending (B $USD)"
-xlab <- "Year"
 title <- "Actual and Modeled (polynomial) Federal Spending"
 legend <- c("Actual Federal Spending", "Modeled Federal Spending", paste("RMSE:", format(rmse.fedSpending.poly, nsmall = 2)))
 ylim <- c(min(yearly$FedSpending.BUSD, fedSpending.predicted.poly, na.rm = TRUE), 
           max(yearly$FedSpending.BUSD, fedSpending.predicted.poly, na.rm = TRUE))
-lwd <- c(3, 3, NA)
 plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
 par(new = TRUE)
 plot(yearly$Year, fedSpending.predicted.poly, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
@@ -171,16 +175,30 @@ fedSpending.predicted.log <- predict(fedSpending.logistic, data.frame(x = yearly
 rmse.fedSpending.log <- sqrt(mean(residuals(fedSpending.logistic)^2))
 
 # plot the output
-ylab <- "Total Federal Spending (B $USD)"
-xlab <- "Year"
 title <- "Actual and Modeled (logistic) Federal Spending"
 legend <- c("Actual Federal Spending", "Modeled Federal Spending", paste("RMSE:", format(rmse.fedSpending.log, nsmall = 2)))
 ylim <- c(min(yearly$FedSpending.BUSD, fedSpending.predicted.log, na.rm = TRUE), 
           max(yearly$FedSpending.BUSD, fedSpending.predicted.log, na.rm = TRUE))
-lwd <- c(3, 3, NA)
 plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
 par(new = TRUE)
 plot(yearly$Year, fedSpending.predicted.log, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
+legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
+
+# and try a third model that uses GDP for predicting federal spending
+fedSpending.gdp <- growth.polynomial(yearly$GDP.BUSD[fitYears], yearly$FedSpending.BUSD[fitYears], degree = 1)
+fedSpending.predicted.gdp <- predict(fedSpending.gdp, data.frame(x = yearly$GDP.BUSD))
+
+# calculate rmse for gdp-based growth
+rmse.fedSpending.gdp <- sqrt(mean(residuals(fedSpending.gdp)^2))
+
+# plot the output
+title <- "Actual and Modeled (GDP-Based polynomial) Federal Spending"
+legend <- c("Actual Federal Spending", "Modeled Federal Spending", paste("RMSE:", format(rmse.fedSpending.log, nsmall = 2)))
+ylim <- c(min(yearly$FedSpending.BUSD, fedSpending.predicted.gdp, na.rm = TRUE), 
+          max(yearly$FedSpending.BUSD, fedSpending.predicted.gdp, na.rm = TRUE))
+plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
+par(new = TRUE)
+plot(yearly$Year, fedSpending.predicted.gdp, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
 #############################
@@ -195,13 +213,19 @@ milSpending.polynomial <- growth.polynomial(yearly$Year[fitYears], yearly$Milita
 milSpending.predicted.poly <- predict(milSpending.polynomial, data.frame(x = yearly$Year))
 
 # next, logistic growth
-milSpending.logistic <- growth.logistic(yearly$Year, yearly$MilitarySpending.BUSD, maxSpending.mil, nrow(yearly))
-milSpending.predicted.log <- predict(milSpending.logistic, data.frame(x = yearly$Year))
+#  just kidding, when adjusted for inflation this fails
+#milSpending.logistic <- growth.logistic(yearly$Year, yearly$MilitarySpending.BUSD, maxSpending.mil, nrow(yearly))
+#milSpending.predicted.log <- predict(milSpending.logistic, data.frame(x = yearly$Year))
+
+# next, gdp growth
+milSpending.gdp <- growth.polynomial(yearly$GDP.BUSD[fitYears], yearly$MilitarySpending.BUSD[fitYears], degree = 2)
+milSpending.predicted.gdp <- predict(milSpending.gdp, data.frame(x = yearly$GDP.BUSD))
 
 # get rmse for each
 rmse.milSpending.exp <- sqrt(mean((yearly$MilitarySpending.BUSD[fitYears] - milSpending.predicted.exp[fitYears])^2))
 rmse.milSpending.poly <- sqrt(mean(residuals(milSpending.polynomial)^2))
-rmse.milSpending.log <- sqrt(mean(residuals(milSpending.logistic)^2))
+#rmse.milSpending.log <- sqrt(mean(residuals(milSpending.logistic)^2))
+rmse.milSpending.gdp <- sqrt(mean(residuals(milSpending.gdp)^2))
 
 # then plot the outputs
 ylab <- "Total Military Spending (B $USD)"
@@ -216,26 +240,31 @@ par(new = TRUE)
 plot(yearly$Year, milSpending.predicted.exp, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
-ylab <- "Total Military Spending (B $USD)"
-xlab <- "Year"
 title <- "Actual and Modeled (polynomial) Military Spending"
 legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.milSpending.poly, nsmall = 2)))
 ylim <- c(min(yearly$MilitarySpending.BUSD, milSpending.predicted.poly, na.rm = TRUE), 
           max(yearly$MilitarySpending.BUSD, milSpending.predicted.poly, na.rm = TRUE))
-lwd <- c(3, 3, NA)
 plot(yearly$Year, yearly$MilitarySpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
 par(new = TRUE)
 plot(yearly$Year, milSpending.predicted.poly, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
-title <- "Actual and Modeled (logistic) Military Spending"
-legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.milSpending.log, nsmall = 2)))
-ylim <- c(min(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE), 
-          max(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE))
-lwd <- c(3, 3, NA)
+#title <- "Actual and Modeled (logistic) Military Spending"
+#legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.milSpending.log, nsmall = 2)))
+#ylim <- c(min(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE), 
+#          max(yearly$MilitarySpending.BUSD, milSpending.predicted.log, na.rm = TRUE))
+#plot(yearly$Year, yearly$MilitarySpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
+#par(new = TRUE)
+#plot(yearly$Year, milSpending.predicted.log, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
+#legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
+
+title <- "Actual and Modeled (GDP-based polynomial) Military Spending"
+legend <- c("Actual Military Spending", "Modeled Military Spending", paste("RMSE:", format(rmse.milSpending.gdp, nsmall = 2)))
+ylim <- c(min(yearly$MilitarySpending.BUSD, milSpending.predicted.gdp, na.rm = TRUE), 
+          max(yearly$MilitarySpending.BUSD, milSpending.predicted.gdp, na.rm = TRUE))
 plot(yearly$Year, yearly$MilitarySpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
 par(new = TRUE)
-plot(yearly$Year, milSpending.predicted.log, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
+plot(yearly$Year, milSpending.predicted.gdp, type = 'l', col = colPred, xlab = NA, ylab = NA, lwd = lwd[2], ylim = ylim, axes = FALSE)
 legend("topleft", legend = legend, col = c(colReal, colPred, NA), lwd = lwd)
 
 #############################
@@ -494,3 +523,15 @@ plot(yearly$Year, vetAppliedOrig, type='l', xlab = xlab, ylab = ylab, main = tit
 par(new = TRUE)
 plot(yearly$Year, yearly$TotalVeterans, type='l', xlab = xlab, ylab = ylab, main = title, lwd = lwd[3], col = cols[3], ylim=ylim, lty=lty[3])
 legend("bottom", legend=legend, lty=lty, col=cols, lwd=lwd)
+
+#############################
+# FINAL MODELING EXERCISE
+
+# ok, so now that we have veteran population data to analyze, we'll start running our actual model, where we vary
+#  a) when demilitarization occurs
+#  b) over how man years it occurs
+#  c) whether we use historic or modeled data
+#
+# the idea is that we'll have two potential model outputs to measure the effect of demilitarization
+#  a) the highest ratio of people added to the labor force times the amount of money freed from demilitarization, and 
+#  b) the total money saved on veteran's costs (for n years beyond the start of demilitarization)
