@@ -570,7 +570,7 @@ p <- 10
 delta <- p / (2 * (p - 1))
 
 # run the morris script, which produces a plot
-script.morris(pMins, pMaxs, pNames, "Morris Sensitivity Analysis\nDemilitarized Labor Index", k, r, p, delta, labor.index.sa)
+script.morris(pMins, pMaxs, pNames, "Morris Sensitivity Analysis\nInflation Adjusted Demilitarized Labor Index", k, r, p, delta, labor.index.sa)
 
 # then we'll run VSA
 nRandom = 500
@@ -579,7 +579,7 @@ dliVsa <- vsa(labor.index.sa, pMins, pMaxs, nRandom)
 # then produce our own plot
 xlab <- "Main effects"
 ylab <- "Total effects"
-title <- "Variance-based Sensitivity Analysis\nDemilitarized Labor Index"
+title <- "Variance-based Sensitivity Analysis\nInflation Adjusted Demilitarized Labor Index"
 pch <- rep(19, k)
 cols <- rainbow(k)
 cex <- rep(3, k)
