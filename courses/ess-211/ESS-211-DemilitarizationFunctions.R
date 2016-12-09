@@ -85,7 +85,6 @@ calibrate.growth <- function(years, population){
   return(r.best)
 }
 
-
 # set up a function for logistic growth
 #  based on the the logistic growth function:
 #  y = phi1/(1 + exp(-(phi2 + phi3 * x)))
@@ -384,7 +383,7 @@ labor.index.sa <- function(params){
 }
 
 # this is the big model
-demil.model <- function(nYears, demilFunction, minEnlistment, deathDelistmentRates, data, returnParameter, plot = FALSE){
+demil.model <- function(nYears, nVetYears, demilFunction, minEnlistment, deathDelistmentRates, data, returnParameter, plot = FALSE){
   # where:
   #  nYears = the number of years over which demilitarization occurrs
   #  demilFuntion = the method used to calculate demilitarization (e.g. linear, exponential)
@@ -396,7 +395,7 @@ demil.model <- function(nYears, demilFunction, minEnlistment, deathDelistmentRat
   # get years to process
   nRows <- length(data$Year)
   startYear <- data$Year[1]
-  endYear <- data$Year[nRows-nYears]
+  endYear <- data$Year[nRows-nVetYears]
   startInd <- 1
   endInd <- which(data$Year == endYear)
   
@@ -409,6 +408,15 @@ demil.model <- function(nYears, demilFunction, minEnlistment, deathDelistmentRat
   
   # calculate the business as usual per-capita veteran spending
   data['PerCapitaVeteranSpending'] = data$VeteranSpending.BUSD / data$TotalVeterans
+  
+  # create a new column for business as usual veteran populations
+  data['OriginalVeterans'] <- data$TotalVeterans
+  
+  # create a matrix to return of mean/stdev labor indices
+  DLI <- matrix(nrow = length(startInd:endInd), ncol = 2)
+  
+  # and a vector to return veteran's costs
+  veteranCosts <- vector(length = length(startInd:endInd))
   
   # loop through each year and calculate metrics
   for (yearInd in startInd:endInd){
@@ -454,10 +462,51 @@ demil.model <- function(nYears, demilFunction, minEnlistment, deathDelistmentRat
                                    data$UnemploymentRate[i], enteringSpending[i], data$FedSpending.BUSD[i])
     }
     
+    # return mean/sd DLI
+    DLI[yearInd, 1] <- mean(laborIndex)
+    DLI[yearInd, 2] <- sd(laborIndex)
+    
     # the number of service members entering the economy is also the number of people that enter the 
     #  veteran population. add them here
     dataModel$TotalVeterans[yearInd:(yearInd + nYears - 1)] <- dataModel$TotalVeterans[yearInd:(yearInd + nYears - 1)] + enteringSoldiers
     
-    # calculate the veteran populations 
+    # then apply the death rate to forecast future numbers
+    dataModel$TotalVeterans[(yearInd + nYears):nRows] <- growth.exponential(dataModel$TotalVeterans[(yearInd + nYears)], deathDelistmentRates[1], length((yearInd + nYears):nRows))
+    
+    # calculate the difference in veteran spending
+    vetDifferences <- data$PerCapitaVeteranSpending * (data$TotalVeterans - dataModel$TotalVeterans)
+    
+    # and report the total costs for n years ahead
+    veteranCosts[yearInd] <- sum(vetDifferences[yearInd:(yearInd + nVetYears)])
+  }
+  
+  # return the parameter set
+  if (returnParameter == 'DLI'){
+    
+    # plot the output
+    if (plot == TRUE){
+      title <- paste0("Demilitarized Labor Index - ", nYears, " Year Demilitarization")
+      xlab <- "Year"
+      ylab <- "DLI"
+      pch <- 19
+      col <- add.alpha("Black", 0.8)
+      cex <- 2
+      plot(data$Year[startInd:endInd], DLI[startInd:endInd], xlab = xlab, ylab = ylab, main = title, col = col, pch = pch, cex = cex)
+    }
+    # return the parameters
+    return(DLI)
+  } else {
+    
+    # plot the output
+    if (plot == TRUE){
+      title <- paste0("Total Veterans Savings After ", nVetYears, " Years")
+      xlab <- "Year"
+      ylab <- "Billions of Dollars"
+      pch <- 19
+      col <- add.alpha("Dark Green", 0.8)
+      cex <- 2
+      plot(data$Year[startInd:endInd], veteranCosts[startInd:endInd], xlab = xlab, ylab = ylab, main = title, col = col, pch = pch, cex = cex)
+    }
+    return(veteranCosts)
   }
 }

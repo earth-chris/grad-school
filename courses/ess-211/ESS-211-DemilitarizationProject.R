@@ -7,7 +7,7 @@
 # set up the environment
 
 # set working directory
-setwd("~/cba/aei-grad-school/courses/ess-211/")
+setwd("~/src/aei-grad-school/courses/ess-211/")
 
 # load ESS-211 functions
 source("ESS-211-Functions.R")
@@ -80,6 +80,7 @@ par(new = TRUE)
 with(yearly, plot(Year, (TotalEnlistment / 1e6), type = 'l', col = cols[2], lwd = lwd[2], xlab = NA, ylab = NA, axes = FALSE))
 axis(side = 4)
 mtext(ylabEnlist, side = 4, line = 3)
+legend("right", legend = c('Domestic Population', 'Military Population'), col = cols, lwd=lwd)
 
 # comparing total federal spending and military spending
 cols <- c(colFed, colMil)
@@ -193,7 +194,7 @@ rmse.fedSpending.gdp <- sqrt(mean(residuals(fedSpending.gdp)^2))
 
 # plot the output
 title <- "Actual and Modeled (GDP-Based polynomial) Federal Spending"
-legend <- c("Actual Federal Spending", "Modeled Federal Spending", paste("RMSE:", format(rmse.fedSpending.log, nsmall = 2)))
+legend <- c("Actual Federal Spending", "Modeled Federal Spending", paste("RMSE:", format(rmse.fedSpending.gdp, nsmall = 2)))
 ylim <- c(min(yearly$FedSpending.BUSD, fedSpending.predicted.gdp, na.rm = TRUE), 
           max(yearly$FedSpending.BUSD, fedSpending.predicted.gdp, na.rm = TRUE))
 plot(yearly$Year, yearly$FedSpending.BUSD, type = 'l', col = colReal, xlab = xlab, ylab = ylab, lwd = lwd[1], ylim = ylim, main = title)
