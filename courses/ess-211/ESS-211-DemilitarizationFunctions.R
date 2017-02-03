@@ -26,7 +26,7 @@ growth.exponential <- function(y0, r, t){
 }
 
 # and a function to apply it
-growth.exponential.apply <- function(y0, r, nYears){
+growth.exponential.apply <- function(y0, r, nYears=1){
   
   # create an output storage vector
   y <- rep(0, nYears)
