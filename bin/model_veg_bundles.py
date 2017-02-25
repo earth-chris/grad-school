@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #####
 # this script uses PyPROSAIL and Py6S to model canopy reflectance
 # for a suite of vegetation types for use in unmixing models and in
@@ -25,82 +26,11 @@ s = SixS()
 #  and sixs outputs with x as the atmospheric iteration)
 output_base = aei.params.environ['AEI_GS'] + '/scratch/spectral_libraries/sr_test_fullrange_veg_bundles'
 
-# set number of random atmospheres to simulate
-n_atmospheres = 1
-
 # set number of random veg, bundles to simulate
 n_bundles = 100
 
-#####
-# set up the spectral output parameters
-#####
-
-# specify the output sensor configuration for modeled spectra
-#  options include ali, aster, er2_mas, gli, landsat_etm, landsat_mss, landsat_oli,
-#  landsat_tm, meris, modis, polder, spot_hrv, spot_vgt, vnir, whole_range, and custom
-target_sensor = 'landsat_oli'
-
-# set up output wavelengths (in um) if using custom wl range (ignored for pre-defined sensors)
-wl_start = 0.4
-wl_end = 2.5
-wl_interval = 0.01
-wl = np.arange(wl_start, wl_end, wl_interval)
-wl_sixs = Wavelength(wl_start, wl_end)
-
-# set up output type (an option from s.outputs)
-#  examples include pixel_radiance, pixel_reflectance, apparent_radiance, apparent_reflectance, etc.
-output_type = 'pixel_reflectance'
-
-#####
-# set up atmospheric modeling parameters
-#####
-
-# select the atmospheric profile (an option from AtmosProfile)
-#  examples include Tropical, MidlatitudeSummer, MidlatitudeWinter, etc.
-atmos_profile = [AtmosProfile.Tropical]
-atmos_profile_ind = np.random.randint(0,len(atmos_profile)-1,n_atmospheres)
-
-# select the aerosol profile to use (an option from AeroProfile)
-#  examples include BiomassBurning, Continental, Desert, Maritime, NoAerosols, Urban, etc.
-aero_profile = [AeroProfile.Continental]
-aero_profile_ind = np.random.randint(0,len(aero_profile)-1,n_atmospheres)
-
-# select ground reflectance method (an option from GroundReflectance)
-#  examples include GreenVegetation, Hetero(/Homo)geneousLambertian, HotSpot, LeafDistPlanophile, etc
-ground_reflectance = [GroundReflectance.HomogeneousLambertian]
-ground_reflectance_ind = np.random.randint(0,len(ground_reflectance)-1,n_atmospheres)
-
-# set altitudes for sensor (ground) and target (target altitude for modeled reflectance)
-#  Landsat 4, 5, 7, 8 altitude - 705 km 
-altitudes = Altitudes()
-#altitudes.set_sensor_custom_altitude(705)
-altitudes.set_sensor_satellite_level()
-altitudes.set_target_sea_level()
-s.altitudes = altitudes
-
-# set aerosol optical thickness (550 nm)
-aot = aei.fn.randomFloats(n_atmospheres, 0.3, 0.7)
-
-# select viewing geometry parameters
-geo = Geometry.User()
-solar_a = aei.fn.randomFloats(n_atmospheres, 0, 0) 
-solar_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
-view_a = aei.fn.randomFloats(n_atmospheres, 0, 0)
-view_z = aei.fn.randomFloats(n_atmospheres, 0, 0)
-#solar_a = aei.fn.randomFloats(n_atmospheres, 0, 359) 
-#solar_z = aei.fn.randomFloats(n_atmospheres, 10, 45)
-#view_a = aei.fn.randomFloats(n_atmospheres, 0, 5) - 2.5
-#view_z = aei.fn.randomFloats(n_atmospheres, 0, 1)
-
-# set view geometry to nadir for prosail, so the radiative transfer
-#  stuff is handled by sixs
-solar_a_prosail = 0
-solar_z_prosail = 0
-view_a_prosail = 0
-view_z_prosail = 0
-
-# convert view azimuth to 0-360 scale
-view_a[(view_a < 0)] = view_a[(view_a < 0)] + 360
+# set the number of output bands (default prosail is 2151)
+nb = 2151
 
 #####
 # set up the leaf and canopy modeling parameters
@@ -189,79 +119,19 @@ for i in range(n_bundles):
 # LIDF = [pyprosail.Planophile, pyprosail.Uniform]
 # LIDF_ind = np.random.random_integers(0,len(LIDF)-1,n_iterations)
 
-#####
-# set up if statements to set parameters based on sesnsor type
-#####
-if target_sensor == 'custom':
-    run_sixs_params = SixSHelpers.Wavelengths.run_wavelengths
-    num_bands = len(wl)
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'ali':
-    run_sixs_params = SixSHelpers.Wavelengths.run_ali
-    num_bands = 7
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'aster':
-    run_sixs_params = SixSHelpers.Wavelengths.run_aster
-    num_bands = 9
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'er2_mas':
-    run_sixs_params = SixSHelpers.Wavelengths.run_er2_mas
-    num_bands = 7
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'gli':
-    run_sixs_params = SixSHelpers.Wavelengths.run_gli
-    num_bands = 30
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'landsat_etm':
-    run_sixs_params = SixSHelpers.Wavelengths.run_landsat_etm
-    num_bands = 6
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'landsat_mss':
-    run_sixs_params = SixSHelpers.Wavelengths.run_landsat_mss
-    num_bands = 4
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'landsat_oli':
-    run_sixs_params = SixSHelpers.Wavelengths.run_landsat_oli
-    num_bands = 10
-    # use only the 6 traditional optical bands
-    good_bands = np.arange(6)+1
-elif target_sensor == 'landsat_tm':
-    run_sixs_params = SixSHelpers.Wavelengths.run_landsat_tm
-    num_bands = 6
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'meris':
-    run_sixs_params = SixSHelpers.Wavelengths.run_meris
-    num_bands = 16
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'modis':
-    run_sixs_params = SixSHelpers.Wavelengths.run_modis
-    num_bands = 8
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'polder':
-    run_sixs_params = SixSHelpers.Wavelengths.run_polder
-    num_bands = 8
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'spot_hrv':
-    run_sixs_params = SixSHelpers.Wavelengths.run_spot_hrv
-    num_bands = 4
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'spot_vgt':
-    run_sixs_params = SixSHelpers.Wavelengths.run_spot_vgt
-    num_bands = 4
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'vnir':
-    run_sixs_params = SixSHelpers.Wavelengths.run_vnir
-    num_bands = 200
-    good_bands = np.arange(num_bands)
-elif target_sensor == 'whole_range':
-    run_sixs_params = SixSHelpers.Wavelengths.run_whole_range
-    num_bands = 380
-    # use only 400-2500 nm range
-    good_bands = np.arange(210)+20
-else:
-    raise OSError('Unsupported sensor configuration')
-
-nb = len(good_bands)
+# viewing and solar angle parameters
+#  solar zenith ranges cludged from http://gis.stackexchange.com/questions/191692/maximum-solar-zenith-angle-for-landsat-8-images
+#  I couldn't find good data on the range of possible solar or viewing azimuth.
+#  I decided to set view parameters to 0 to assume nice, clean nadir viewing, and let the sun vary.
+s_az = []
+s_za = []
+v_az = []
+v_za = []
+for i in range(n_bundles):
+    s_az.append(random.uniform(20, 70))
+    s_za.append(random.uniform(0,360))
+    v_az.append(0)
+    v_za.append(0)
 
 #####
 # set up the output file and band names
@@ -269,25 +139,21 @@ nb = len(good_bands)
 output_csv = []
 output_sli = []
 output_hdr = []
-output_sixs = []
 output_spec = []
 
 output_csv.append(output_base + '_speclib.csv')
 output_sli.append(output_base + '_speclib.sli')
 output_hdr.append(output_base + '_speclib.hdr')
 
-for i in range(n_atmospheres):
-    output_sixs.append(output_base + '_atm_%02d.sixs' % (i+1))
-    
 for i in range(n_bundles):
-    output_spec.append('Veg. bundle ' + str(i+1))
+    output_spec.append('veg bundle ' + str(i+1))
     
 #####
 # set up the loop for each atmosphere/canopy model
 #####
 
 # first create the output array that will contain all the resulting spectra
-output_array = np.zeros([nb, (n_bundles * n_atmospheres) + 1])
+output_array = np.zeros([nb, (n_bundles) + 1])
 
 for i in range(n_atmospheres):
     
@@ -309,8 +175,8 @@ for i in range(n_atmospheres):
         LIDF = (LAD_inclination[j], LAD_bimodality[j])
         spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
                     brown[j], EWT[j], LMA[j], soil_reflectance[j], 
-                    LAI[j], hot_spot[j], solar_z_prosail, solar_a_prosail,
-                    view_z_prosail, view_a_prosail, LIDF)
+                    LAI[j], hot_spot[j], s_za[i], s_az[i],
+                    v_za[i], v_az[i], LIDF)
 
         # set the prosail modeled spectrum as ground spectrum in sixs                            
         s.ground_reflectance = ground_refl(spectrum)
