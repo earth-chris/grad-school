@@ -30,7 +30,7 @@ output_base = aei.params.environ['AEI_GS'] + '/scratch/spectral_libraries/sr_tes
 n_bundles = 100
 
 # set the number of output bands (default prosail is 2151)
-nb = 2151
+nb = 2101
 
 #####
 # set up the leaf and canopy modeling parameters
@@ -155,51 +155,21 @@ for i in range(n_bundles):
 # first create the output array that will contain all the resulting spectra
 output_array = np.zeros([nb, (n_bundles) + 1])
 
-for i in range(n_atmospheres):
+# loop through each veg / wood / soil bundle
+for j in range(n_bundles):
     
-    # set the sixs atmosphere profile
-    s.aero_profile = AeroProfile.PredefinedType(aero_profile[aero_profile_ind[i]])
-    s.atmos_profile = AtmosProfile.PredefinedType(atmos_profile[atmos_profile_ind[i]])
-    s.aot550 = aot[i]
-    geo.solar_a = solar_a[i]
-    geo.solar_z = solar_z[i]
-    geo.view_a = view_a[i]
-    geo.view_z = view_z[i]
-    s.geometry = geo
-    ground_refl = ground_reflectance[ground_reflectance_ind[i]]
-    
-    # loop through each veg / wood / soil bundle
-    for j in range(n_bundles):
-        
-        # load prosail and run the canopy model
-        LIDF = (LAD_inclination[j], LAD_bimodality[j])
-        spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
-                    brown[j], EWT[j], LMA[j], soil_reflectance[j], 
-                    LAI[j], hot_spot[j], s_za[i], s_az[i],
-                    v_za[i], v_az[i], LIDF)
+    # load prosail and run the canopy model
+    LIDF = (LAD_inclination[j], LAD_bimodality[j])
+    spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
+                brown[j], EWT[j], LMA[j], soil_reflectance[j], 
+                LAI[j], hot_spot[j], s_za[i], s_az[i],
+                v_za[i], v_az[i], LIDF)
 
-        # set the prosail modeled spectrum as ground spectrum in sixs                            
-        s.ground_reflectance = ground_refl(spectrum)
-    
-        # generate the output spectrum
-        if target_sensor == 'custom':
-            wavelengths, results = run_sixs_params(s, wl, output_name = output_type)
-        else:
-            wavelengths, results = run_sixs_params(s, output_name = output_type)
-    
-        # convert output to array for ease of output
-        results = np.asarray(results)
-        
-        # add the modeled spectrum to the output array
-        output_array[:, (i * n_bundles) + j + 1] = results[good_bands]
-    
-    # write the sixs parameters for this run to output file
-    s.write_input_file(output_sixs[i])
-    
+    # add the modeled spectrum to the output array
+    output_array[:, (j+1)] = spectrum[:,1]
 
 # now that the loop has finished we can export our results to a csv file
-wavelengths = np.asarray(wavelengths)
-output_array[:, 0] = wavelengths[good_bands]
+output_array[:, 0] = spectrum[:,0]
 np.savetxt(output_csv[0], output_array.transpose(), delimiter=",")
     
 # output a spectral library
@@ -208,15 +178,15 @@ with open(output_sli[0], 'w') as f:
     
 metadata = {
     'samples' : nb,
-    'lines' : (n_bundles * n_atmospheres),
+    'lines' : n_bundles,
     'bands' : 1,
     'data type' : 5,
     'header offset' : 0,
     'interleave' : 'bsq',
     'byte order' : 0,
-    'sensor type' : target_sensor,
+    'sensor type' : 'prosail',
     'spectra names' : output_spec,
     'wavelength units' : 'micrometers',
-    'wavelength' : wavelengths[good_bands]
+    'wavelength' : output_array[:,0]
     }
 spectral.envi.write_envi_header(output_hdr[0], metadata, is_library=True)
