@@ -12,6 +12,7 @@ satData <- read.csv(file = infile, header = TRUE)
 
 # transform the data to get a good distribution of values
 satData["Frequency"] = 1/satData$Frequency
+satData["sqrtFreq"] = sqrt(satData$Frequency)
 satData["logExtent"] = log10(satData$Extent)
 satData["lnExtent"] = log(satData$Extent)
 satData["logScale"] = log10(satData$UseScale)
@@ -68,7 +69,7 @@ cbPalette <- colorRampPalette(cbBase)(length(unique(satData$EBV)))
 
 # set up breaks for log scale plotting
 xbr = seq(0, max(satData$Frequency) * 1.5, by = 0.05)
-ybr = seq(0, max(satData$UseScale) * 1.5, by = 100)
+ybr = seq(0, max(satData$UseScale) * 1.5, by = 500)
 
 # set up the EBV Class plot function
 title <- "Remote Sensing of Biodiversity Classes"
