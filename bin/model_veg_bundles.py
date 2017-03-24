@@ -27,7 +27,7 @@ s = SixS()
 output_base = aei.params.environ['AEI_GS'] + '/scratch/spectral_libraries/sr_test_fullrange_veg_bundles'
 
 # set number of random veg, bundles to simulate
-n_bundles = 100
+n_bundles = 500
 
 # set the number of output bands (default prosail is 2151)
 nb = 2101
@@ -41,14 +41,16 @@ nb = 2101
 #N = aei.fn.randomFloats(n_bundles, 1.3, 2.5)
 N = []
 for i in range(n_bundles):
-    N.append(random.gauss(1.9,0.3))
+    N.append(random.uniform(1.3,2.5))
 
 # total chlorophyll content (ug/cm^2)
 #  range ~ 5 - 75 from Rivera et al. 2013
 #chloro = aei.fn.randomFloats(n_bundles, 10, 60)
 chloro = []
 for i in range(n_bundles):
-    chloro.append(random.gauss(30, 15))
+    chloro.append(random.gauss(35, 30))
+    while chloro[-1] < 5 or chloro[-1] > 75:
+        chloro[-1] = random.gauss(35, 30)
 
 # total carotenoid content (ug/cm^2)
 caroten = aei.fn.randomFloats(n_bundles, 8, 8)
@@ -61,7 +63,7 @@ brown = aei.fn.randomFloats(n_bundles, 0, 0)
 #EWT = aei.fn.randomFloats(n_bundles, 0.002, 0.05)
 EWT = []
 for i in range(n_bundles):
-    EWT.append(random.gauss(0.025, 0.01))
+    EWT.append(random.uniform(0.002, 0.05))
 
 # leaf mass per area (g/cm^2)
 #  global range 0.0022 - 0.0365 (median 0.01)
@@ -70,9 +72,13 @@ for i in range(n_bundles):
 LMA = []
 for i in range(n_bundles):
     LMA.append(random.gauss(0.012, 0.005))
+    while LMA[-1] < 0.0022 or LMA[-1] > 0.0365:
+        LMA[-1] = random.gauss(0.012, 0.005)
 
 # soil reflectance metric (wet soil = 0, dry soil = 1)
-soil_reflectance = aei.fn.randomFloats(n_bundles, 0, 0)
+soil_reflectance = []
+for i in range(n_bundles):
+    soil_reflectance.append(random.uniform(0,1))
 
 # leaf area index (unitless, cm^2 leaf area/cm^2 ground area)
 #  range 0.01 - 18.0 (5.5 mean) globally
@@ -92,14 +98,16 @@ soil_reflectance = aei.fn.randomFloats(n_bundles, 0, 0)
 #LAI = aei.fn.randomFloats(n_bundles, 0.6, 12.0)
 LAI = []
 for i in range(n_bundles):
-    LAI.append(random.gauss(5,2.5))
+    LAI.append(random.gauss(3,2))
+    while LAI[-1] < 0.1 or LAI[-1] > 18:
+        LAI[-1] = random.gauss(3,2)
 
 # hot spot parameter (derived from brdf model)
 #  range 0.05-0.5 from Rivera et al. 2013
 #hot_spot = aei.fn.randomFloats(n_bundles, 0.05, 0.5)
 hot_spot = []
 for i in range(n_bundles):
-    hot_spot.append(random.gauss(0.25, 0.1))
+    hot_spot.append(random.uniform(0.05, 0.5))
 
 # leaf distribution function parameter.
 #  range LAD_inc -0.4 -  0.4, LAD_bim -0.1 - 0.2 for trees
@@ -111,8 +119,8 @@ for i in range(n_bundles):
 LAD_inclination = []
 LAD_bimodality = []
 for i in range(n_bundles):
-    LAD_inclination.append(random.gauss(0, 0.2))
-    LAD_bimodality.append(random.gauss(0.05, 0.05))
+    LAD_inclination.append(random.uniform(-0.4, 0.4))
+    LAD_bimodality.append(random.uniform(-0.1, 0.2))
 
 # old leaf inclination parameters based on fixed canopy architecture. options include:
 # Planophile, Erectophile, Plagiophile, Extremophile, Spherical, Uniform
@@ -170,7 +178,7 @@ for j in range(n_bundles):
 
 # now that the loop has finished we can export our results to a csv file
 output_array[:, 0] = spectrum[:,0]
-np.savetxt(output_csv[0], output_array.transpose(), delimiter=",")
+np.savetxt(output_csv[0], output_array.transpose(), delimiter=",", fmt = '%.3f')
     
 # output a spectral library
 with open(output_sli[0], 'w') as f: 
