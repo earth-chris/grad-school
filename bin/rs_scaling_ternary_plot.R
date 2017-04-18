@@ -7,7 +7,7 @@
 library(ggtern)
 
 # load the csv file 
-infile <- "~/cba/aei-grad-school/scratch/satellite_scales.csv"
+infile <- "~/src/aei-grad-school/scratch/satellite_scales.csv"
 satData <- read.csv(file = infile, header = TRUE)
 
 # transform the data to get a good distribution of values
