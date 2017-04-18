@@ -238,6 +238,7 @@ for i in range(len(mod)):
     print("solar azi    : {:0.3f}".format(mod[i].feature_importances_[9]))
     print("solar zen    : {:0.3f}".format(mod[i].feature_importances_[10]))
     print("-----")
+    print("")
     
 # start plotting some outputs
 # first, LAI and nir_v
@@ -251,7 +252,7 @@ plt.close()
 
 # then, prediction results from these parameters
 plt.figure()
-plt.scatter(y_test_medium, y_test, c = "purple", label = "r-squared: {:0.3f}".format(metrics.r2_score(y_test, y_test_medium)))
+plt.scatter(y_test_large, y_test, c = "purple", label = "r-squared: {:0.3f}".format(metrics.r2_score(y_test, y_test_large)))
 plt.xlabel("predicted")
 plt.ylabel("test data")
 plt.title("Predicted NIR-v from PROSAIL parameters")
