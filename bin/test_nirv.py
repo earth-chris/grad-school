@@ -76,7 +76,7 @@ def func_linear(x, m, b):
     return m * x + b
     
 def func_fit(x, y, function):
-    opt, lma = scipy.optimize.curve_fit(function, x, y)
+    opt, cov = scipy.optimize.curve_fit(function, x, y)
     y_fit = function(np.array(x), *opt)
     rsq = metrics.r2_score(y, y_fit)
     rms = np.sqrt(metrics.mean_squared_error(y, y_fit))
