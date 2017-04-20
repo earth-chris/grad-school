@@ -6,6 +6,8 @@
 import numpy as np
 import pyprosail
 import random
+import scipy
+import math
 import spectral as spectral
 import matplotlib.pyplot as plt
 from sklearn import tree
@@ -21,6 +23,9 @@ n_bundles = 2000
 
 # set the number of output bands (default prosail is 2101)
 nb = 2101
+
+# set a color palette
+palette = ["#CC79A7", "#0072B2", "#D55E00", "#009E73", "#56B4E9", "#F0E442", "#E69F00", "#000000"]
 
 # set output files to store the results
 output_csv = 'prosail_spectra.csv'
@@ -48,6 +53,7 @@ s_za = []
 v_az = []
 v_za = []
 nir_v = []
+brightness = []
 
 # set the wavelengths to use in calculating nir_v
 red_wl = 0.680
@@ -61,6 +67,40 @@ nir_band = np.where(spec[:,0] == nir_wl)[0][0]
 # create a function to calculate nir_v
 def calc_nir_v(red, nir):
     return nir * (nir - red) / (nir + red)
+    
+# and some functions to optimize linear and logistic fits for plotting later
+def func_sigmoid(x, x0, k, a, c):
+    return a / (1 + np.exp(-k * (x - x0))) + c
+
+def func_linear(x, m, b):
+    return m * x + b
+    
+def func_fit(x, y, function):
+    opt, lma = scipy.optimize.curve_fit(function, x, y)
+    y_fit = function(np.array(x), *opt)
+    rsq = metrics.r2_score(y, y_fit)
+    rms = np.sqrt(metrics.mean_squared_error(y, y_fit))
+    return [y_fit, rsq, rms]
+    
+def bn(spectrum):
+    return np.sqrt((spectrum ** 2).sum())
+    
+# find the wavelengths where water absorption does its thing
+#  and remove them when calculating brightness
+water_bands = [[1.350, 1.460], [1.790, 1.960]]
+
+# start with nir-swir1 transition
+gt = np.where(spec[:,0] > water_bands[0][0])
+lt = np.where(spec[:,0] < water_bands[0][1])
+nd1 = np.intersect1d(gt[0], lt[0])
+
+# then swir1-swir2 transition
+gt = np.where(spec[:,0] > water_bands[1][0])
+lt = np.where(spec[:,0] < water_bands[1][1])
+nd2 = np.intersect1d(gt[0], lt[0])
+
+# concatenate into a single list of indices to remove
+water_inds = np.concatenate((nd1, nd2))
 
 # loop through the bundles and generate random canopy parameters
 for i in range(n_bundles):
@@ -115,7 +155,7 @@ for i in range(n_bundles):
     #  range 2.5 - 8.4 (6.3 mean) for wetlands
     #  from Asner, Scurlock and Hicke 2003 http://dx.doi.org/10.1046/j.1466-822X.2003.00026.x
     LAI.append(random.gauss(3,2))
-    while LAI[-1] < 0.3 or LAI[-1] > 15:
+    while LAI[-1] < 0.5 or LAI[-1] > 15:
         LAI[-1] = random.gauss(3,2)
 
     # hot spot parameter (derived from brdf model)
@@ -162,8 +202,11 @@ for j in range(n_bundles):
     # add a new name to label in the output spectral library
     output_spec.append('veg bundle ' + str(j+1))
     
-    # calculate nirv for this spectra
+    # calculate nirv for this spectrum
     nir_v.append(calc_nir_v(spectrum[red_band, 1], spectrum[nir_band, 1]))
+    
+    # calculate the brightness scalar for this spectrum
+    brightness.append(bn(np.delete(spectrum[:,1], water_inds)))
 
 # now that the loop has finished we can export our results to a csv file
 output_array[:, 0] = spectrum[:,0]
@@ -194,7 +237,7 @@ y = nir_v
 x = []
 for j in range(n_bundles):
     x.append([N[j], chloro[j], caroten[j], LMA[j], soil_reflectance[j], LAI[j], hot_spot[j], 
-        LAD_inclination[j], LAD_bimodality[j], s_az[j], s_za[j]])
+        LAD_inclination[j], LAD_bimodality[j], s_az[j], s_za[j], brightness[j]])
         
 # split in to train/test splits to eval regression
 x_train, x_test, y_train, y_test = train_test_split(
@@ -237,22 +280,77 @@ for i in range(len(mod)):
     print("LAD_biomod   : {:0.3f}".format(mod[i].feature_importances_[8]))
     print("solar azi    : {:0.3f}".format(mod[i].feature_importances_[9]))
     print("solar zen    : {:0.3f}".format(mod[i].feature_importances_[10]))
+    print("brightness   : {:0.3f}".format(mod[i].feature_importances_[11]))
     print("-----")
     print("")
     
 # start plotting some outputs
+plt.figure(1)
+plt.suptitle("Canopy trait drivers of NIRv\nLAI {:0.1f} - {:0.1f}".format(min(LAI), max(LAI)))
+
 # first, LAI and nir_v
-plt.figure()
-plt.scatter(LAI, nir_v, c = 'darkorange')
-plt.xlabel("LAI")
-plt.ylabel("NIR-v")
-plt.savefig("lai-nirv.png")
+plt.subplot(321)
+lai_fit = func_fit(np.array(LAI), nir_v, func_linear)
+plt.scatter(LAI, nir_v, c = palette[0], label = "rmse: {:0.3f}".format(lai_fit[2]))
+plt.plot(LAI, lai_fit[0], c = 'black', label = "r-squared: {:0.3f}".format(lai_fit[1]))
+plt.title("LAI")
+plt.ylabel("NIRv")
+plt.legend()
+
+# then, LMA and nir_v
+plt.subplot(322)
+lma_fit = func_fit(LMA, nir_v, func_linear)
+plt.scatter(LMA, nir_v, c = palette[1], label = "rmse: {:0.3f}".format(lma_fit[2]))
+plt.plot(LMA, lma_fit[0], c = 'black', label = "r-squared: {:0.3f}".format(lma_fit[1]))
+plt.title("LMA")
+plt.legend()
+
+# then leaf angle distribution
+plt.subplot(323)
+lad_fit = func_fit(LAD_inclination, nir_v, func_linear)
+plt.scatter(LAD_inclination, nir_v, c = palette[2], label = "rmse: {:0.3f}".format(lad_fit[2]))
+plt.plot(LAD_inclination, lad_fit[0], c = "black", label = "r-squared: {:0.3f}".format(lad_fit[1]))
+plt.title("LAD")
+plt.ylabel("NIRv")
+plt.legend()
+
+# then chlorophyll
+plt.subplot(324)
+chl_fit = func_fit(chloro, nir_v, func_linear)
+plt.scatter(chloro, nir_v, c = palette[3], label = "rmse: {:0.3f}".format(chl_fit[2]))
+plt.plot(chloro, chl_fit[0], c = "black", label = "r-squared: {:0.3f}".format(chl_fit[1]))
+plt.title("CHL")
+plt.legend()
+
+# then brightness
+plt.subplot(325)
+brt_fit = func_fit(brightness, nir_v, func_linear)
+plt.scatter(brightness, nir_v, c = palette[4], label = "rmse: {:0.3f}".format(brt_fit[2]))
+plt.plot(brightness, brt_fit[0], c = "black", label = "r-squared: {:0.3f}".format(brt_fit[1]))
+plt.title("Brightness")
+plt.ylabel("NIRv")
+plt.legend()
+
+# save the plot, fool
+plt.savefig("nirv-params.png")
 plt.show()
 plt.close()
 
+# plot some canopy spectra
+spec_min = output_array[:, np.where(nir_v == min(nir_v))[0] + 1]
+spec_max = output_array[:, np.where(nir_v == max(nir_v))[0] + 1]
+spec_mean = np.mean(np.array(output_array[:,1:]), axis = 1)
+plt.plot(output_array[:,0], spec_min, c = palette[6], label = 'Min NIRv: {:0.3f}'.format(min(nir_v)))
+plt.plot(output_array[:,0], spec_mean, c = 'black', label = 'Mean reflectance')
+plt.plot(output_array[:,0], spec_max, c = palette[3], label = 'Max NIRv: {:0.3f}'.format(max(nir_v)))
+plt.xlabel("Wavelength (um)")
+plt.ylabel("Reflectance (%)")
+plt.title("Simulated canopy reflectance")
+plt.legend()
+
 # then, prediction results from these parameters
 plt.figure()
-plt.scatter(y_test_large, y_test, c = "purple", label = "r-squared: {:0.3f}".format(metrics.r2_score(y_test, y_test_large)))
+plt.scatter(y_test_large, y_test, c = palette[4], label = "r-squared: {:0.3f}".format(metrics.r2_score(y_test, y_test_large)))
 plt.xlabel("predicted")
 plt.ylabel("test data")
 plt.title("Predicted NIR-v from PROSAIL parameters")
