@@ -21,13 +21,22 @@ s = SixS()
 # set up output files and processing parameters
 #####
 
-# set output file base name (will have _speclib.csv, _speclib.sli, 
-#  _speclib.hdr, and _atm_x.sixs appended for the csv, spectral library, 
-#  and sixs outputs with x as the atmospheric iteration)
-output_base = aei.params.environ['AEI_GS'] + '/scratch/spectral_libraries/sr_test_fullrange_veg_bundles'
+# set output file names
+output_base = aei.params.environ['AEI_GS'] + '/scratch/spectral_libraries/veg_bundles'
+output_sli = output_base + '.sli'
+output_hdr = output_base + '.hdr'
+output_csv = output_base + '.csv'
+output_md = output_base + '_md.csv'
+
+# set lists to update through processing
+output_spec = []
+output_metadata = []
+output_metadata.append('N (arb), chloro (ug/cm2), caroten (ug/cm2), brown (arb),\
+    EWT (cm), LMA (g/cm2), soil_reflectance (%), LAI (arb), hot_spot (arb), \
+    s_za (deg), s_az (deg), v_za (deg), v_az (deg), bimodality (?), inclination (?)')
 
 # set number of random veg, bundles to simulate
-n_bundles = 300
+n_bundles = 2000
 
 # set the number of output bands (default prosail is 2101)
 nb = 2101
@@ -36,7 +45,6 @@ nb = 2101
 # set up the leaf and canopy modeling parameters
 #####
 
-# set up the lists for each leaf/canopy parameter
 N = []
 chloro = []
 caroten = []
@@ -53,27 +61,26 @@ s_za = []
 v_az = []
 v_za = []
 
-# randomly sample from pool of parameters
+# loop through the bundles and generate random canopy parameters
 for i in range(n_bundles):
+    
     # structural coefficient (arbitrary units)
     #  range 1.3 - 2.5 from Rivera et al. 2013 http://dx.doi.org/10.3390/rs5073280
     N.append(random.uniform(1.3,2.5))
 
     # total chlorophyll content (ug/cm^2)
-    #  range ~ 5 - 75 from Rivera et al. 2013
+    #  range ~ 5 - 75 from Rivera et al. 2013, but i'll set a little more conservative
     chloro.append(random.gauss(35, 30))
-    while chloro[-1] < 5 or chloro[-1] > 75:
+    while chloro[-1] < 10 or chloro[-1] > 60:
         chloro[-1] = random.gauss(35, 30)
 
     # total carotenoid content (ug/cm^2)
-    #  converted range from Asner et al. 2011 http://dx.doi.org/10.1016/j.rse.2011.08.020
-    #  to ug/cm^2 from mg/g 
-    caroten.append(random.gauss(7.5, 6.5))
-    while caroten[-1] < 1.5 or caroten[-1] > 15:
-        caroten[-1] = random.gauss(7.5, 6.5)
-    
-    # brown pigment content (arbitrary units)
-    #  fix to zero - no range found to use
+    #  kinda fudged this to be like 1/4 of total chl
+    caroten.append(random.gauss(8.75, 7.5))
+    while caroten[-1] < 2 or caroten[-1] > 15:
+        caroten[-1] = random.gauss(8.75, 7.5)
+
+    # brown pigment content (arbitrary units) - not gonna mess with this
     brown.append(0)
 
     # equivalent water thickness (cm)
@@ -83,8 +90,9 @@ for i in range(n_bundles):
     # leaf mass per area (g/cm^2)
     #  global range 0.0022 - 0.0365 (median 0.01)
     #  from Asner et al. 2011 http://dx.doi.org/10.1016/j.rse.2011.08.020
+    # gonna go a little more conservative
     LMA.append(random.gauss(0.012, 0.005))
-    while LMA[-1] < 0.0022 or LMA[-1] > 0.0365:
+    while LMA[-1] < 0.005 or LMA[-1] > 0.0250:
         LMA[-1] = random.gauss(0.012, 0.005)
 
     # soil reflectance metric (wet soil = 0, dry soil = 1)
@@ -105,8 +113,8 @@ for i in range(n_bundles):
     #  range 0.2 - 5.3 (1.9 mean) for tundra
     #  range 2.5 - 8.4 (6.3 mean) for wetlands
     #  from Asner, Scurlock and Hicke 2003 http://dx.doi.org/10.1046/j.1466-822X.2003.00026.x
-    LAI.append(random.gauss(3,2))
-    while LAI[-1] < 0.1 or LAI[-1] > 18:
+    LAI.append(random.gauss(4,2))
+    while LAI[-1] < 0.5 or LAI[-1] > 15:
         LAI[-1] = random.gauss(3,2)
 
     # hot spot parameter (derived from brdf model)
@@ -116,40 +124,20 @@ for i in range(n_bundles):
     # leaf distribution function parameter.
     #  range LAD_inc -0.4 -  0.4, LAD_bim -0.1 - 0.2 for trees
     #  range LAD_inc -0.1 -  0.3, LAD_bim  0.3 - 0.5 for lianas
-    #  range LAD_inc -0.8 - -0.2, LAD_bim -0.1 - 0.3 for Palms
+    #  range LAD_inc -0.8 - -0.2, LAD_bim -0.1 - 0.3 for palms
     #  from Asner et al. 2011
     LAD_inclination.append(random.uniform(-0.4, 0.4))
     LAD_bimodality.append(random.uniform(-0.1, 0.2))
-
-    # old leaf inclination parameters based on fixed canopy architecture. options include:
-    # Planophile, Erectophile, Plagiophile, Extremophile, Spherical, Uniform
-    # LIDF = [pyprosail.Planophile, pyprosail.Uniform]
-    # LIDF_ind = np.random.random_integers(0,len(LIDF)-1,n_iterations)
 
     # viewing and solar angle parameters
     #  solar zenith ranges cludged from http://gis.stackexchange.com/questions/191692/maximum-solar-zenith-angle-for-landsat-8-images
     #  I couldn't find good data on the range of possible solar or viewing azimuth.
     #  I decided to set view parameters to 0 to assume nice, clean nadir viewing, and let the sun vary.
-    s_az.append(random.uniform(0, 360))
-    s_za.append(random.uniform(20, 20))
+    s_za.append(random.uniform(20, 70))
+    s_az.append(random.uniform(0,360))
     v_az.append(0)
     v_za.append(0)
 
-#####
-# set up the output file and band names
-#####
-output_csv = []
-output_sli = []
-output_hdr = []
-output_spec = []
-
-output_csv.append(output_base + '_speclib.csv')
-output_sli.append(output_base + '_speclib.sli')
-output_hdr.append(output_base + '_speclib.hdr')
-
-for i in range(n_bundles):
-    output_spec.append('veg bundle ' + str(i+1))
-    
 #####
 # set up the loop for each atmosphere/canopy model
 #####
@@ -164,20 +152,29 @@ for j in range(n_bundles):
     LIDF = (LAD_inclination[j], LAD_bimodality[j])
     spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
                 brown[j], EWT[j], LMA[j], soil_reflectance[j], 
-                LAI[j], hot_spot[j], s_za[i], s_az[i],
-                v_za[i], v_az[i], LIDF)
+                LAI[j], hot_spot[j], s_za[j], s_az[j],
+                v_za[j], v_az[j], LIDF)
 
     # add the modeled spectrum to the output array
     output_array[:, (j+1)] = spectrum[:,1]
-
+    
+    # add a new name to label in the output spectral library
+    output_spec.append('veg bundle ' + str(j+1))
+    
+    # update the metadata list with a string of parameters
+    output_metadata.append("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}".format(
+        N[j], chloro[j], caroten[j], brown[j], EWT[j], LMA[j], soil_reflectance[j], 
+        LAI[j], hot_spot[j], s_za[j], s_az[j], v_za[j], v_az[j], LIDF[0], LIDF[1]))
+    
 # now that the loop has finished we can export our results to a csv file
 output_array[:, 0] = spectrum[:,0]
-np.savetxt(output_csv[0], output_array.transpose(), delimiter=",", fmt = '%.3f')
+np.savetxt(output_csv, output_array.transpose(), delimiter=",", fmt = '%.3f')
     
 # output a spectral library
-with open(output_sli[0], 'w') as f: 
+with open(output_sli, 'w') as f: 
     output_array[:,1:].transpose().tofile(f)
-    
+
+# write the ENVI header file for the spectral library    
 metadata = {
     'samples' : nb,
     'lines' : n_bundles,
@@ -191,4 +188,8 @@ metadata = {
     'wavelength units' : 'micrometers',
     'wavelength' : output_array[:,0]
     }
-spectral.envi.write_envi_header(output_hdr[0], metadata, is_library=True)
+spectral.envi.write_envi_header(output_hdr, metadata, is_library=True)
+
+with open(output_md, 'w') as f:
+    for line in output_metadata:
+        f.write("{line}\n".format(line = line))
