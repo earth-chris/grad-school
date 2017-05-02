@@ -42,7 +42,7 @@ for i in range(ncolors):
 # add titles/labels        
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
-plt.legend()
+plt.legend(loc = 'lower left')
 
 # handle axes
 xmin = df[xdata].min() * 0.8
@@ -57,13 +57,79 @@ ax.invert_yaxis()
 ax.loglog()
 
 # annotate each point
-annotate = 'Sensor/instrument'
+annotate = 'Sensor Name'
 for i in range(len(df)):
     ax.annotate(df[annotate][i], 
-        xy = (df[xdata][i], df[ydata][i]), xytext = (8, 0),
+        xy = (df[xdata][i], df[ydata][i]), xytext = (-8, 0),
         #arrowprops = dict(arrowstyle = '-', color = 'black'),
-        textcoords = 'offset points', ha = 'left', va = 'bottom',
+        textcoords = 'offset points', ha = 'right', va = 'bottom',
         bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1))
 
 # full plot
 ax.plot()
+
+##########
+# bar plot of timeline for missions
+
+# set labels and data to plot
+xlabel = "Years of Operation"
+ydata = 'Launch Year'
+wdata = 'Decomission Year'
+ylabel = "Earth Observation Mission Name"
+ytlabel = 'Sensor Name'
+title = 'Earth Observations\nfor Biodiversity'
+
+# sort the data frame by start year
+df_sorted = df.sort_values(by = ['Sensor type', 'Sensor Name'], ascending = [0,1]).reset_index(drop = True)
+
+# set the number of locations to plot
+w = 1.2
+y = range(len(df_sorted))
+
+# set the bar width
+wdata = 'Decomission Year'
+width = [i-j for i,j in zip(df_sorted[wdata], df_sorted[ydata])]
+
+# set the minimum year for the plot base
+min_year = 1973 # min(df_sorted[ydata]) - 1
+max_year = 2018 # max(df_sorted[wdata]) + 1
+
+# plot as a bar chart
+fig, ax1 = plt.subplots()
+for i in range(ncolors):
+    ind = np.where(df_sorted[colorby] == unique[i])
+    ax1.barh(np.array(y)[ind[0]], 
+        np.array(width)[ind[0]],
+        left = df_sorted[ydata][ind[0]],
+        color = colors[i],
+        alpha = 0.9,
+        label = unique[i])
+
+# add some dashed lines to track each sensor
+for i in range(len(df_sorted)):
+    ax1.plot((min_year, df_sorted[ydata][i]),
+        (y[i], y[i]), '--', c = 'black', alpha = 0.2)
+
+# annotate with sensor information
+ax = plt.gca()
+annotate = 'Sensor Description'
+for i in range(len(df_sorted)):
+    ax.annotate(df_sorted[annotate][i],
+        xy = (df_sorted[ydata][i]-0.5, y[i]), #+ (width[i]/2.), y[i]),
+        ha = 'right', va = 'center',
+        bbox = dict(boxstyle = 'round, pad=0.1', lw=0, fc = 'white'))
+    
+# label the axes
+ax.invert_yaxis()
+plt.yticks(y, df_sorted[ytlabel])
+plt.xlim(min_year, max_year)
+plt.ylabel(ylabel)
+plt.xlabel(xlabel)
+plt.title(title)
+plt.legend(loc = 'upper left')
+ax2 = ax1.twinx()
+plt.ylim(ax1.get_ylim())
+ax2.yaxis.tick_right()
+plt.yticks(y, df_sorted['EBV Authors'])
+plt.ylabel("Reference")
+plt.tight_layout()
