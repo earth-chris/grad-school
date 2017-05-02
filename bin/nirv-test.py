@@ -193,8 +193,8 @@ for j in range(n_bundles):
     LIDF = (LAD_inclination[j], LAD_bimodality[j])
     spectrum = pyprosail.run(N[j], chloro[j], caroten[j],  
                 brown[j], EWT[j], LMA[j], soil_reflectance[j], 
-                LAI[j], hot_spot[j], s_za[i], s_az[i],
-                v_za[i], v_az[i], LIDF)
+                LAI[j], hot_spot[j], s_za[j], s_az[j],
+                v_za[j], v_az[j], LIDF)
 
     # add the modeled spectrum to the output array
     output_array[:, (j+1)] = spectrum[:,1]
