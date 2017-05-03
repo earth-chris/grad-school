@@ -60,12 +60,13 @@ ax.loglog()
 annotate = 'Sensor Name'
 for i in range(len(df)):
     ax.annotate(df[annotate][i], 
-        xy = (df[xdata][i], df[ydata][i]), xytext = (-8, 0),
+        xy = (df[xdata][i], df[ydata][i]), xytext = (8, 0),
         #arrowprops = dict(arrowstyle = '-', color = 'black'),
-        textcoords = 'offset points', ha = 'right', va = 'bottom',
+        textcoords = 'offset points', ha = 'center', va = 'bottom',
         bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1))
 
 # full plot
+plt.tight_layout()
 ax.plot()
 
 ##########
@@ -80,7 +81,7 @@ ytlabel = 'Sensor Name'
 title = 'Earth Observations\nfor Biodiversity'
 
 # sort the data frame by start year
-df_sorted = df.sort_values(by = ['Sensor type', 'Sensor Name'], ascending = [0,1]).reset_index(drop = True)
+df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
 
 # set the number of locations to plot
 w = 1.2
