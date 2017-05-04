@@ -46,11 +46,12 @@ fs_cb_band = None
 # count how many pixels in coto brus field sites to use as a limit on the
 #  number of random samples to pull from the national- and coto brus-wide data
 ns = fs_cb[0].shape[0]
-nscr = 2e5
+nscr = int(2e5)
 
 # loop through each band and plot histograms of nation-wide data,
 #  coto brus-wide data, and the data from all plots
 for i in range(cr_ref.RasterCount):
+    print("Processing band: {band}".format(band = bands[i]))
     cr_band = cr_ref.GetRasterBand(i+1)
     cb_band = cb_ref.GetRasterBand(i+1)
     cr_nodata = cr_band.GetNoDataValue()
@@ -60,9 +61,8 @@ for i in range(cr_ref.RasterCount):
     cr_arr = cr_band.ReadAsArray()
     
     # if this is the first band, select a random subset of pixels to sample and use that throughout
-    if i == 0:
-        cr_ind = np.where(cr_arr != cr_nodata)
-        cr_rnd = np.int16(np.floor(np.random.uniform(0, cr_ind[0].shape[0], ns)))
+    cr_ind = np.where(cr_arr >= 0)
+    cr_rnd = np.int16(np.floor(np.random.uniform(0, cr_ind[0].shape[0], nscr)))
     
     # subset the data and clear the rest out of memory    
     cr_data = cr_arr[cr_ind[0][cr_rnd], cr_ind[1][cr_rnd]]
@@ -74,9 +74,8 @@ for i in range(cr_ref.RasterCount):
     # pull the field plot data
     fs_data = cb_arr[fs_cb[0], fs_cb[1]]
     
-    if i == 0:
-        cb_ind = np.where(cb_arr != cb_nodata)
-        cb_rnd = np.int16(np.floor(np.random.uniform(0, cb_ind[0].shape[0], ns)))
+    cb_ind = np.where(cb_arr >= 0)
+    cb_rnd = np.int16(np.floor(np.random.uniform(0, cb_ind[0].shape[0], ns)))
         
     cb_data = cb_arr[cb_ind[0][cb_rnd], cb_ind[1][cb_rnd]]
     cb_arr = None
@@ -109,7 +108,7 @@ for i in range(cr_ref.RasterCount):
     plt.plot(xs, fs_dns(xs), label = "Field Plots", color = cols[2])
     plt.xlabel(plt_bands[i])
     plt.ylabel("Density")
-    plt.title("Costa Rica {var} Distributions".format(bands[i]))
+    plt.title("Costa Rica {var} Distributions".format(var = bands[i]))
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_files[i], dpi = 200)
