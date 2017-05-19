@@ -19,30 +19,37 @@ input_file = aei.params.environ['AEI_GS'] + '/data/EBV-Satellite-scales.csv'
 df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
-xdata = 'Min. revisit time (days)'
-xlabel = "Temporal resolution (freq.)"
-ydata = 'Min. spatial resolution (m)'
+xdata = 'Plot revisit time'
+xlabel = "Frequency (days between revisit)"
+ydata = 'Plot resolution'
 ylabel = "Spatial resolution (m)"
+title = "Spatiotemporal Scales of\nBiodiversity Measurements from Earth Observations"
 
 # set variable to color by
 colorby = 'EBV Class'
 unique = list(df[colorby].unique())
 ncolors = len(unique)
 colors = aei.color.color_blind(ncolors)
-df['scatter_color'] = df.apply(lambda row: label_color(
-    row, colorby, unique, colors), axis = 1)
+colors = []
+color_map = cm.Dark2
+for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
+    colors.append(color_map(val))
+#df['scatter_color'] = df.apply(lambda row: label_color(
+#    row, colorby, unique, colors), axis = 1)
 
 plt.figure()
 # plot by unique color scheme
 for i in range(ncolors):
     fl = df[(df[colorby] == unique[i])]
     plt.scatter(x = fl[xdata], y = fl[ydata], c = colors[i], 
-        alpha = 0.9, label = unique[i], s = 150)
+        alpha = 0.9, label = unique[i], s = 175,
+        edgecolor='black', linewidth='1')
     
 # add titles/labels        
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
-plt.legend(loc = 'lower left')
+plt.title(title)
+plt.legend(loc = 'lower left', ncol = 2)
 
 # handle axes
 xmin = df[xdata].min() * 0.8
@@ -60,9 +67,11 @@ ax.loglog()
 annotate = 'Sensor Name'
 for i in range(len(df)):
     ax.annotate(df[annotate][i], 
-        xy = (df[xdata][i], df[ydata][i]), xytext = (8, 0),
-        #arrowprops = dict(arrowstyle = '-', color = 'black'),
-        textcoords = 'offset points', ha = 'center', va = 'bottom',
+        #xy = (df[xdata][i], df[ydata][i]), xytext = (4, 4),
+        xy = (df[xdata][i], df[ydata][i]), xytext = (df['xoff'][i]*2, df['yoff'][i]*2),
+        arrowprops = dict(arrowstyle = '-', color = 'black'),
+        #textcoords = 'offset points', ha = 'left', va = 'bottom',
+        textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
         bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1))
 
 # full plot
@@ -76,23 +85,23 @@ ax.plot()
 xlabel = "Years of Operation"
 ydata = 'Launch Year'
 wdata = 'Decomission Year'
-ylabel = "Earth Observation Mission Name"
+ylabel = "Earth Observation Mission"
 ytlabel = 'Sensor Name'
-title = 'Earth Observations\nfor Biodiversity'
+title = 'Timeline of Earth Observations of Biodiversity'
 
 # sort the data frame by start year
 df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
 
 # set the number of locations to plot
-w = 1.2
-y = range(len(df_sorted))
+w = 1.0
+y = np.arange(len(df_sorted)) * w
 
 # set the bar width
 wdata = 'Decomission Year'
 width = [i-j for i,j in zip(df_sorted[wdata], df_sorted[ydata])]
 
 # set the minimum year for the plot base
-min_year = 1973 # min(df_sorted[ydata]) - 1
+min_year = 1970 # min(df_sorted[ydata]) - 1
 max_year = 2018 # max(df_sorted[wdata]) + 1
 
 # plot as a bar chart
@@ -104,7 +113,8 @@ for i in range(ncolors):
         left = df_sorted[ydata][ind[0]],
         color = colors[i],
         alpha = 0.9,
-        label = unique[i])
+        label = unique[i],
+        edgecolor='black', linewidth='1')
 
 # add some dashed lines to track each sensor
 for i in range(len(df_sorted)):
@@ -127,10 +137,10 @@ plt.xlim(min_year, max_year)
 plt.ylabel(ylabel)
 plt.xlabel(xlabel)
 plt.title(title)
-plt.legend(loc = 'upper left')
-ax2 = ax1.twinx()
-plt.ylim(ax1.get_ylim())
-ax2.yaxis.tick_right()
-plt.yticks(y, df_sorted['EBV Authors'])
-plt.ylabel("Reference")
+plt.legend(loc = 'lower left')
+#ax2 = ax1.twinx()
+#plt.ylim(ax1.get_ylim())
+#ax2.yaxis.tick_right()
+#plt.yticks(y, df_sorted['EBV Authors'])
+#plt.ylabel("Reference")
 plt.tight_layout()
