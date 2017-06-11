@@ -3,8 +3,8 @@
 # plots distributions of predictor variables 
 #####
 
-import aei
 import gdal
+import scipy
 import numpy as np
 from sklearn import tree
 from sklearn import ensemble
@@ -13,6 +13,7 @@ from sklearn import metrics
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
+import pickle
 
 # some functions for plotting later
 def func_linear(x, m, b):
@@ -26,7 +27,7 @@ def func_fit(x, y, function):
     return [y_fit, rsq, rms]
 
 # set base directory for files
-base = '/home/cba/Downloads/tree-cover/'
+base = '/home/salo/Downloads/tree-cover/'
 
 # predictor data
 pred_file = base + 'coto_brus_predictors_masked2.tif'
@@ -39,7 +40,7 @@ train_ref = gdal.Open(train_file)
 train_nd = train_ref.GetRasterBand(1).GetNoDataValue()
 
 # name of the output mode
-model_file = base + 'coto_brus_tree_cover_model'
+model_file = base + 'coto_brus_tree_cover_model.sav'
 
 # read the data into memory and reduce dimensions
 train_arr = train_ref.ReadAsArray()
@@ -53,14 +54,16 @@ pred_arr = None
 
 # create the train/test split
 x_train, x_test, y_train, y_test = train_test_split(
-    pred.transpose(), train, test_size = 0.3)
+    pred.transpose(), train, test_size = 0.5)
     
 # create the regression model
-rf_def = ensemble.RandomForestRegressor(criterion = 'mae', 
-    bootstrap = True, n_jobs = 4, verbose = 1)
+rf_def = ensemble.RandomForestRegressor(n_jobs = 7, verbose = 1)
 
 # train the model
 rf_def.fit(x_train, y_train)
+
+# save the model
+pickle.dump(rf_def, open(model_file, 'wb'))
 
 # test the model
 y_pred = rf_def.predict(x_test)
@@ -77,8 +80,8 @@ print("explained var: {:0.3f}".format(explained_var))
 print("rmse         : {:0.3f}".format(rmse))
 print("mean abs err : {:0.3f}".format(mae))
 print("var. importance")
-for i in len(pred_names):
-    print("{} : {:0.3f}".format(pred_names[i], rf_def.feature_importance_[i]))
+for i in range(len(pred_names)):
+    print("{} : {:0.3f}".format(pred_names[i], rf_def.feature_importances_[i]))
 
 # plot the output
 plt.figure(1)
