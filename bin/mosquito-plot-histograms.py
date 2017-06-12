@@ -15,14 +15,14 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 
 # set base directory for files
-base = '/home/cba/Downloads/mosquito-proposal/'
+base = '/home/cba/Downloads/mosquito/'
 
 # file for CR-wide data
-cr_file = base + 'CR-aligned-byte.tif'
+cr_file = base + 'CCB-LC-Predictors-masked.tif'
 cr_ref = gdal.Open(cr_file)
 
 # file for Coto Brus data
-cb_file = base + 'CR-aligned-southern.tif'
+cb_file = base + 'CCB-LC-Predictors-southern.tif'
 cb_ref = gdal.Open(cb_file)
 
 # file for current sampling data
@@ -30,12 +30,14 @@ fs_cb_file = base + 'CR-plot-locations-southern.tif'
 fs_cb_ref = gdal.Open(fs_cb_file)
 
 # file for Aedes aegyptii points
-ae_file = base + 'CR-mosquito-locations-90m.tif'
+ae_file = base + 'CR-mosquito-locations-50m.tif'
 ae_ref = gdal.Open(ae_file)
 
 # set the colors and band names to plot
-plt_bands = ["Temperature (C)", "Soil Cover (%)", "Veg. Cover (%)", "Impervious Cover (%)", "Cloud Cover (%)"]
-bands = ["Temperature", "Soil-Cover", "Veg-Cover", "Impervious-Cover", "Cloud-Cover"]
+plt_bands = ["Tree Cover (%)", "Soil Cover (%)", "Veg. Cover (%)", "Impervious Cover (%)", 
+    "Min. Temp (C)", "Median Temp (C)", "Max. Temp (C)"]
+bands = ["TreeCover", "Soil-Cover", "Veg-Cover", "Impervious-Cover", "Temp-Min", 
+    "Temp-Median", "Temp-Max"]
 output_files = []
 for band in bands:
     output_files.append("{base}CR-{band}-plot.png".format(base = base, band = band))
@@ -132,18 +134,18 @@ for i in range(cr_ref.RasterCount):
     xs = np.linspace(xmin, xmax, 200)
     
     # plot each function in a single plot
-    plt.figure()
-    plt.plot(xs, cr_dns(xs), label = "Costa Rica", color = cols[0])
-    plt.plot(xs, cb_dns(xs), label = "Southern CR", color = cols[1])
-    plt.plot(xs, fs_dns(xs), label = "Field Plots", color = cols[2])
-    plt.plot(xs, ae_dns(xs), label = "Aedes aegyptii", color = cols[3])
-    plt.xlabel(plt_bands[i])
-    plt.ylabel("Density")
-    plt.title("Costa Rica {var} Distributions".format(var = bands[i]))
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_files[i], dpi = 200)
-    plt.close()
+    #plt.figure()
+    #plt.plot(xs, cr_dns(xs), label = "Costa Rica", color = cols[0])
+    #plt.plot(xs, cb_dns(xs), label = "Southern CR", color = cols[1])
+    #plt.plot(xs, fs_dns(xs), label = "Field Plots", color = cols[2])
+    #plt.plot(xs, ae_dns(xs), label = "Aedes aegyptii", color = cols[3])
+    #plt.xlabel(plt_bands[i])
+    #plt.ylabel("Density")
+    #plt.title("Costa Rica {var} Distributions".format(var = bands[i]))
+    #plt.legend()
+    #plt.tight_layout()
+    #plt.savefig(output_files[i], dpi = 200)
+    #plt.close()
     
     # add data to the predictor array
     x[0:nae, i] = ae_data
