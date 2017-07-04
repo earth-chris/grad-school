@@ -255,8 +255,8 @@ def main():
     syntax: main()
     """
     # parse the argument list
-    #args = parse_args(sys.argv)
-    args = parse_args(argl)
+    args = parse_args(sys.argv)
+    #args = parse_args(argl)
     
     # check that an input file has been set
     if not aei.fn.checkFile(args.infile, quiet = True):
