@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 
 # set base directory for files
-base = '/home/cba/cba/aei-grad-school/'
+base = aei.params.environ['AEI_GS'] + '/'
 figs = base + 'figures/'
 
 # file for the GBIF points/random samples
@@ -82,6 +82,13 @@ for i in range(len(columns)):
         np.percentile(m2_data, 2), np.percentile(st_data, 2))
     xmax = max(np.percentile(m0_data, 98), np.percentile(m1_data, 98), 
         np.percentile(m2_data, 98), np.percentile(st_data, 98))
+        
+    # report the 2% cutoffs for median temps for each vector
+    if columns[i] == 'TempMed':
+        print("Aegypti median thermal range: {} - {}".format(
+            np.percentile(m1_data, 2), np.percentile(m1_data, 98)))
+        print("Albopictus median thermal range: {} - {}".format(
+            np.percentile(m2_data, 2), np.percentile(m2_data, 98)))
     
     # get a density distribution for each 
     m0_dns = gaussian_kde(m0_data)
@@ -109,10 +116,15 @@ for i in range(len(columns)):
     # plot each function in a single plot
     plt.figure()
     #plt.plot(xs, m0_dns(xs), label = labels[0], color = cols[0])
-    plt.plot(xs, m1_dns(xs), label = labels[1], color = cols[1])
-    plt.plot(xs, m2_dns(xs), label = labels[2], color = cols[2])
-    plt.plot(xs, st_dns(xs), label = labels[3], color = cols[3])
+    plt.plot(xs, m1_dns(xs), label = labels[1], color = cols[1], linewidth = 2)
+    plt.plot(xs, m2_dns(xs), label = labels[2], color = cols[2], linewidth = 2)
+    plt.plot(xs, st_dns(xs), label = labels[3], color = cols[3], linewidth = 2)
     #plt.plot(xs, cr_dns(xs), label = labels[4], color = cols[4])
+    #plt.fill_between(xs, m0_dns(xs), color = cols[0], alpha = 0.3)
+    plt.fill_between(xs, m1_dns(xs), color = cols[1], alpha = 0.3)
+    plt.fill_between(xs, m2_dns(xs), color = cols[2], alpha = 0.3)
+    plt.fill_between(xs, st_dns(xs), color = cols[3], alpha = 0.3)
+    #plt.fill_between(xs, cr_dns(xs), color = cols[4], alpha = 0.3)
     plt.xlabel(plt_bands[i])
     plt.ylabel("Density")
     plt.title("{var} Distributions".format(var = bands[i]))
@@ -149,20 +161,20 @@ for i in range(len(mods)):
         for j in range(len(bands)-1):
             print("{}: {:0.3f}%".format(bands[j], model.feature_importances_[j]))
         
-    # apply the prediction to the southern costa rica region
-    scarr = cb_ref.ReadAsArray()
-    scarr = scarr[:-1, cb_ind[0], cb_ind[1]]
-    newpred = model.predict(scarr.transpose())
-    newarr = np.zeros((cb_ref.RasterYSize, cb_ref.RasterXSize), np.byte)
-    newarr[cb_ind[0], cb_ind[1]] = newpred
+    # apply the prediction to costa rica
+    #scarr = cb_ref.ReadAsArray()
+    #scarr = scarr[:-1, cb_ind[0], cb_ind[1]]
+    #newpred = model.predict(scarr.transpose())
+    #newarr = np.zeros((cb_ref.RasterYSize, cb_ref.RasterXSize), np.byte)
+    #newarr[cb_ind[0], cb_ind[1]] = newpred
     
     # write to an output file
-    newref = gdal.GetDriverByName("GTiff").Create(output_models[i], cb_ref.RasterXSize, 
-        cb_ref.RasterYSize, 1, gdal.GDT_Byte)
-    newref.SetGeoTransform(cb_ref.GetGeoTransform())
-    newref.SetProjection(cb_ref.GetProjection())
-    newband = newref.GetRasterBand(1)
-    newband.WriteArray(newarr)
-    newband = None
-    newarr = None
-    newref = None
+    #newref = gdal.GetDriverByName("GTiff").Create(output_models[i], cb_ref.RasterXSize, 
+    #    cb_ref.RasterYSize, 1, gdal.GDT_Byte)
+    #newref.SetGeoTransform(cb_ref.GetGeoTransform())
+    #newref.SetProjection(cb_ref.GetProjection())
+    #newband = newref.GetRasterBand(1)
+    #newband.WriteArray(newarr)
+    #newband = None
+    #newarr = None
+    #newref = None
