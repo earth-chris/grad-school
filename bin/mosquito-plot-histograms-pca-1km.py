@@ -42,6 +42,7 @@ pref = None
 build_plots = False
 build_scatter = False
 write_data = True
+tuning = True
 
 # set this to true to subset the predictor data
 subset_pcs = False
@@ -73,9 +74,10 @@ band_names = list(bk.columns)
 band_names.remove('class')
 
 # set the models to apply
-models = ["DecisionTree", "SVM", "RandomForest", "GradientBoosting", "MaxEnt"]
+models = ["DecisionTree", "SVM", "RandomForest", "AdaBoosting",
+    "GradientBoosting", "MaxEnt"]
 mods = [tree.DecisionTreeClassifier(), svm.SVC(), ensemble.RandomForestClassifier(n_jobs = -1),
-    ensemble.AdaBoostClassifier(), linear_model.LogisticRegression()]
+    ensemble.GradientBoostingClassifier(), ensemble.AdaBoostClassifier(), linear_model.LogisticRegression()]
 output_models = []
 for model in models:
     output_models.append("{base}Mesoamerica-prediction-{model}".format(
@@ -198,6 +200,7 @@ bk_max = np.array(bkae.max(axis = 0))
 # scale data from 0-1
 xae_scaled = (xae - bk_min) / (bk_max - bk_min)
 xaa_scaled = (xaa - bk_min) / (bk_max - bk_min)
+pred_scaled = (pred - bk_min) / (bk_max - bk_min)
 
 # split into train/test groups
 xae_train, xae_test, yae_train, yae_test = train_test_split(
@@ -221,6 +224,18 @@ test_cm_aa = []
 model_prediction_ae = np.zeros((nm, len(yae_test)))
 model_prediction_aa = np.zeros((nm, len(yaa_test)))
 
+# create the model tuning object, and the list of models to tune
+ae_tuner = aei.model.tune(xae_scaled, yae_scaled)
+aa_tuner = aei.model.tune(xaa_scaled, yaa_scaled)
+
+models = ["DecisionTree", "SVM", "RandomForest", "AdaBoosting",
+"GradientBoosting", "MaxEnt"]
+
+ae_model = [ae_tuner.DecisionTree, ae_tuner.SVC, ae_tuner.RandomForest,
+    ae_tuner.AdaBoosting, ae_tuner.GradientBoosting, ae_tuner.LogisticRegression]
+aa_model = [aa_tuner.DecisionTree, aa_tuner.SVC, aa_tuner.RandomForest,
+    aa_tuner.AdaBoosting, aa_tuner.GradientBoosting, aa_tuner.LogisticRegression]
+
 # iterate over each model
 for i in range(len(mods)):
     
@@ -228,11 +243,17 @@ for i in range(len(mods)):
     print("----------")
     print("Classifying using: {mod}".format(mod = models[i]))
     
-    # just runnin' on defaults here
-    model = mods[i]
-    
-    # fit for aegypti first
-    model.fit(xae_train, yae_train)
+    # set up logic to perform model tuning, or if we just run on defaults
+    if tuning:
+        print("Performing model tuning")
+        ae_tuner.param_grid = None
+        tuner = ae_model[i]
+        tuner(param_grid = None)
+        model = tuner.best_estimator
+    else:
+        # just runnin' on defaults here
+        model = mods[i]
+        model.fit(xae_train, yae_train)
     
     # get the calibration accuracies
     yae_calib = model.predict(xae_train)
@@ -275,7 +296,7 @@ for i in range(len(mods)):
         
         # run the prediction
         print("Predicting on image extent")
-        im_pred = model.predict(pred)
+        im_pred = model.predict(pred_scaled)
         arr[gd[0], gd[1]] = im_pred
         outfile = '{}-aegypti-{}.tif'.format(output_models[i], ftype)
         
@@ -291,7 +312,18 @@ for i in range(len(mods)):
     
     #####
     # fit for albopictus next
-    model.fit(xaa_train, yaa_train)
+    
+    # set up logic to perform model tuning, or if we just run on defaults
+    if tuning:
+        print("Performing model tuning")
+        aa_tuner.param_grid = None
+        tuner = aa_model[i]
+        tuner(param_grid = None)
+        model = tuner.best_estimator
+    else:
+        # just runnin' on defaults here
+        model = mods[i]
+        model.fit(xaa_train, yaa_train)
     
     # get the calibration accuracies
     yaa_calib = model.predict(xaa_train)
@@ -335,7 +367,7 @@ for i in range(len(mods)):
         
         # run the prediction
         print("Predicting on image extent")
-        im_pred = model.predict(pred)
+        im_pred = model.predict(pred_scaled)
         arr[gd[0], gd[1]] = im_pred
         outfile = '{}-albopictus-{}.tif'.format(output_models[i], ftype)
         
