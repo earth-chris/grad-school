@@ -204,9 +204,9 @@ pred_scaled = (pred - bk_min) / (bk_max - bk_min)
 
 # split into train/test groups
 xae_train, xae_test, yae_train, yae_test = train_test_split(
-    xae, yae, test_size = 0.25)
+    xae_scaled, yae, test_size = 0.25)
 xaa_train, xaa_test, yaa_train, yaa_test = train_test_split(
-    xaa, yaa, test_size = 0.25)
+    xaa_scaled, yaa, test_size = 0.25)
 
 # set up arrays to store performance metrics from each model
 nm = len(mods)
@@ -225,16 +225,18 @@ model_prediction_ae = np.zeros((nm, len(yae_test)))
 model_prediction_aa = np.zeros((nm, len(yaa_test)))
 
 # create the model tuning object, and the list of models to tune
-ae_tuner = aei.model.tune(xae_scaled, yae_scaled)
-aa_tuner = aei.model.tune(xaa_scaled, yaa_scaled)
+ae_tuner = aei.model.tune(xae_train, yae_train)
+aa_tuner = aei.model.tune(xaa_train, yaa_train)
 
 models = ["DecisionTree", "SVM", "RandomForest", "AdaBoosting",
 "GradientBoosting", "MaxEnt"]
 
-ae_model = [ae_tuner.DecisionTree, ae_tuner.SVC, ae_tuner.RandomForest,
-    ae_tuner.AdaBoosting, ae_tuner.GradientBoosting, ae_tuner.LogisticRegression]
-aa_model = [aa_tuner.DecisionTree, aa_tuner.SVC, aa_tuner.RandomForest,
-    aa_tuner.AdaBoosting, aa_tuner.GradientBoosting, aa_tuner.LogisticRegression]
+ae_model = [ae_tuner.DecisionTreeClassifier, ae_tuner.SVC, 
+    ae_tuner.RandomForestClassifier, ae_tuner.AdaBoostClassifier, 
+    ae_tuner.GradientBoostClassifier, ae_tuner.LogisticRegression]
+aa_model = [aa_tuner.DecisionTreeClassifier, aa_tuner.SVC, 
+    aa_tuner.RandomForestClassifier, aa_tuner.AdaBoostClassifier, 
+    aa_tuner.GradientBoostClassifier, aa_tuner.LogisticRegression]
 
 # iterate over each model
 for i in range(len(mods)):
@@ -249,7 +251,7 @@ for i in range(len(mods)):
         ae_tuner.param_grid = None
         tuner = ae_model[i]
         tuner(param_grid = None)
-        model = tuner.best_estimator
+        model = ae_tuner.best_estimator
     else:
         # just runnin' on defaults here
         model = mods[i]
@@ -319,7 +321,7 @@ for i in range(len(mods)):
         aa_tuner.param_grid = None
         tuner = aa_model[i]
         tuner(param_grid = None)
-        model = tuner.best_estimator
+        model = aa_tuner.best_estimator
     else:
         # just runnin' on defaults here
         model = mods[i]
