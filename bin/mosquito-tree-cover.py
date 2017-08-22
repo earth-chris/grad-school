@@ -11,6 +11,7 @@ from sklearn import ensemble
 from sklearn import linear_model
 from sklearn import svm
 from sklearn import metrics
+from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
@@ -28,16 +29,19 @@ def func_fit(x, y, function):
     return [y_fit, rsq, rms]
 
 # set base directory for files
-base = '/home/cba/Downloads/tree-cover/'
+base = '/home/salo/Downloads/tree-cover/'
 
 # predictor data
-pred_file = base + 'coto_brus_predictors_masked2.tif'
+#pred_file = base + 'coto_brus_predictors_masked2.tif'
+pred_file = base + 'coto_brus_despeckle.tif'
 pred_ref = gdal.Open(pred_file)
 pred_prj = pred_ref.GetProjection()
 pred_geo = pred_ref.GetGeoTransform()
 nx = pred_ref.RasterXSize
 ny = pred_ref.RasterYSize
-pred_names = ["Palsar HH", "Palsar HV", "% Soil", "% Veg", "% Urban", "NIRv"]
+nb = pred_ref.RasterCount
+#pred_names = ["Palsar HH", "Palsar HV", "% Soil", "% Veg", "% Urban", "NIRv"]
+pred_names = ["Palsar HH", "Palsar HV", "NIRv", "% Soil", "% Veg", "% Urban"]
 
 # training data
 train_file = base + 'coto_brus_tree_cover.tif'
@@ -56,24 +60,84 @@ train_arr = None
 pred_arr = pred_ref.ReadAsArray()
 pred = pred_arr[:, gd[0], gd[1]]
 pred_arr = None
+pred = pred.transpose()
+
+# transform the predictor data to 0-1 range
+scaler = preprocessing.MinMaxScaler()
+pred = scaler.fit_transform(pred)
+
+# save the scaler to use when applying later
+pickle.dump(scaler, open(base + 'tree_cover_scaler.sav', 'wb'))
 
 # create the train/test split
 x_train, x_test, y_train, y_test = train_test_split(
-    pred.transpose(), train, test_size = 0.5)
+    pred, train, test_size = 0.8)
 
-# create a more advanced train/test split
+# create a more advanced train/test split based on even
+#  sampling across tree cover bins (here, 10%)
 binsize = 0.1
-bins = np.arange(0, 1 + binsize, binsize)
+bins = np.arange(0, 1.00001, binsize)
+#bins = np.array([0, 0.1, 1.0001])
+
+# use 90% of the least common bin size as the number of per-bin samples
 train_hist = np.histogram(train, bins = bins)
+nrnd = int(np.floor(min(train_hist[0]) * 0.9))
+
+# to get good representation of low tree cover, add a bunch more 
+#  samples from that class
+lt10 = 10 
+nrnd_lt10 = lt10 * nrnd
+
+# create arrays to store the train and test data
+n_train = int(np.floor(nrnd * len(train_hist[0]) + (nrnd_lt10 - nrnd)))
+n_test = train.shape[0] - n_train
+
+x_train = np.zeros((n_train, nb))
+y_train = np.zeros(n_train)
+x_test = np.zeros((n_test, nb))
+y_test = np.zeros(n_test)
+
+# create a counter to store the indices for where the test data go in the test array
+train_start = 0
+test_start = 0
 
 for i in range(len(bins)-1):
+    # find the indices for this bin, then randomize them
     ll = np.where(train >= bins[i])
-    ul = np.where(train < bins[i+1])
+    if i != len(bins)-2:
+        ul = np.where(train < bins[i+1])
+    else:
+        ul = np.where(train <= bins[i+1])
     intersect = np.intersect1d(ul, ll)
+    np.random.shuffle(intersect)
+    
+    # separate the indices for each bin into train and test sets
+    if i == 0:
+        int_train = intersect[:nrnd_lt10]
+        int_test = intersect[nrnd_lt10:]
+    else:    
+        int_train = intersect[:nrnd]
+        int_test = intersect[nrnd:]
+    
+    # extract these data from the response and predictor data
+    n_test = len(int_test)
+    if i == 0:
+        n_train = nrnd_lt10
+    else:
+        n_train = nrnd
+    
+    x_train[train_start:train_start+n_train, :] = pred[int_train, :]
+    y_train[train_start:train_start+n_train] = train[int_train]
+    train_start += n_train
+    
+    x_test[test_start:test_start+n_test] = pred[int_test, :]
+    y_test[test_start:test_start+n_test] = train[int_test]
+    test_start += n_test
     
 # create the regression models
-rf = ensemble.RandomForestRegressor(n_jobs = 7, verbose = 1)
-gb = ensemble.GradientBoostingRegressor()
+rf = ensemble.RandomForestRegressor(n_jobs = 7, verbose = 2, n_estimators=15)
+gb = ensemble.GradientBoostingRegressor(learning_rate=0.1, min_samples_split=2,
+    n_estimators=800, verbose = 2)
 et = ensemble.ExtraTreesRegressor(n_jobs = 7, verbose = 1)
 br = ensemble.BaggingRegressor(n_jobs = 7, verbose = 1)
 ab = ensemble.AdaBoostRegressor()
@@ -98,14 +162,14 @@ for i in range(len(models)):
     model_file_name = "{}_{}.sav".format(model_file, model_names[i])
     
     # save the model
-    #pickle.dump(models[i], open(model_file_name, 'wb'))
+    pickle.dump(models[i], open(model_file_name, 'wb'))
     
     # test the model
     y_pred = models[i].predict(x_test)
     output_test[model_names[i]] = y_pred
     
     # output the full model to a dictionary
-    opred = models[i].predict(pred.transpose())
+    opred = models[i].predict(pred)
     output_pred[model_names[i]] = opred
     
     # get metrics
