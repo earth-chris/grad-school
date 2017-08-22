@@ -29,7 +29,7 @@ def func_fit(x, y, function):
     return [y_fit, rsq, rms]
 
 # set base directory for files
-base = '/home/salo/Downloads/tree-cover/'
+base = '/home/cba/Downloads/tree-cover/'
 
 # predictor data
 #pred_file = base + 'coto_brus_predictors_masked2.tif'
@@ -135,16 +135,17 @@ for i in range(len(bins)-1):
     test_start += n_test
     
 # create the regression models
-rf = ensemble.RandomForestRegressor(n_jobs = 7, verbose = 2, n_estimators=15)
 gb = ensemble.GradientBoostingRegressor(learning_rate=0.1, min_samples_split=2,
-    n_estimators=800, verbose = 2)
+    n_estimators=1000, verbose=2, loss='lad')
+rf = ensemble.RandomForestRegressor(n_jobs = 7, verbose = 2, n_estimators=15,
+    criterion='mae')
 et = ensemble.ExtraTreesRegressor(n_jobs = 7, verbose = 1)
 br = ensemble.BaggingRegressor(n_jobs = 7, verbose = 1)
 ab = ensemble.AdaBoostRegressor()
 ol = linear_model.LinearRegression(n_jobs = 7)
 
 models = [rf, gb, et, br, ab, ol]
-model_names = ['RandomForest', 'GradientBoosting', 'ExtraTrees',
+model_names = ['GradientBoosting', 'RandomForest', 'ExtraTrees',
     'Bagging', 'AdaBoost', 'LinearModel']
     
 output_pred = {}
