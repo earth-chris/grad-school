@@ -20,17 +20,23 @@ import pickle
 base = '/home/cba/Downloads/tree-cover'
 
 # list the tiles to compute over
-tiles = [base + '/tiles/pred_001.tif', base + '/tiles/pred_002.tif', base + '/tiles/pred_003.tif', 
-    base + '/tiles/pred_004.tif', base + '/tiles/pred_005.tif', base + '/tiles/pred_006.tif', 
-    base + '/tiles/pred_008.tif', base + '/tiles/pred_009.tif']
+tiles = [base + '/tiles/pred_001_despeckled.tif', base + '/tiles/pred_002_despeckled.tif', base + '/tiles/pred_003_despeckled.tif', 
+    base + '/tiles/pred_004_despeckled.tif', base + '/tiles/pred_005_despeckled.tif', base + '/tiles/pred_006_despeckled.tif', 
+    base + '/tiles/pred_008_despeckled.tif', base + '/tiles/pred_009_despeckled.tif']
     
 # list the models to apply
-model_files = ["coto_brus_tree_cover_model_AdaBoost.sav", 
-          "coto_brus_tree_cover_model_Bagging.sav", 
-          "coto_brus_tree_cover_model_ExtraTrees.sav", 
-          "coto_brus_tree_cover_model_GradientBoosting.sav", 
-          "coto_brus_tree_cover_model_LinearModel.sav", 
-          "coto_brus_tree_cover_model_RandomForest.sav"]
+#model_files = ["coto_brus_tree_cover_model_AdaBoost.sav", 
+#          "coto_brus_tree_cover_model_Bagging.sav", 
+#          "coto_brus_tree_cover_model_ExtraTrees.sav", 
+#          "coto_brus_tree_cover_model_GradientBoosting.sav", 
+#          "coto_brus_tree_cover_model_LinearModel.sav", 
+#          "coto_brus_tree_cover_model_RandomForest.sav"]
+model_files = ["coto_brus_tree_cover_model_GradientBoosting.sav"]
+#            "coto_brus_tree_cover_model_RandomForest.sav"]
+
+# load the file for scaling the input data
+scale = True
+scaler = pickle.load(open("tree_cover_scaler.sav", 'r'))
           
 # load the models to memory
 models = []
@@ -64,6 +70,10 @@ for i in range(len(tiles)):
     pred_arr = tref.ReadAsArray()
     pred = pred_arr[:, gd[0], gd[1]].transpose()
     pred_arr = None
+    
+    # scale the data
+    if scale:
+        pred = scaler.transform(pred)
     
     # predict each model
     print("Predicting each model")
