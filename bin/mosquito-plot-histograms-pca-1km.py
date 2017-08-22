@@ -5,6 +5,7 @@
 
 import aei
 import gdal
+import pickle
 import pandas as pd
 import numpy as np
 from sklearn import tree
@@ -12,6 +13,8 @@ from sklearn import ensemble
 from sklearn import svm
 from sklearn import linear_model
 from sklearn import metrics
+from sklearn import decomposition
+from sklearn import preprocessing
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -21,49 +24,87 @@ from scipy.stats import gaussian_kde
 base = aei.params.environ['AEI_GS'] + '/'
 figs = base + 'scratch/'
 fig_base = "Mesoamerica_pca_1km_"
+ma_file = base + 'data/mesoamerica_predictor_data.csv'
 
 # set file for predicting distributions
 pred_file = "/home/cba/Downloads/mesoamerica/CCB-LC-Mesoamerica-stacked-0000080640-0000107520_southern.tif"
-
-# open the file, get the metadata, read it into memory, and subset it
-pref = gdal.Open(pred_file)
-prj = pref.GetProjection()
-geo = pref.GetGeoTransform()
-nx = pref.RasterXSize
-ny = pref.RasterYSize
-b1 = pref.GetRasterBand(1).ReadAsArray()
-gd = np.where(b1 != 255)
-arr = pref.ReadAsArray()
-pred = arr[:, gd[0], gd[1]].transpose()
-arr = np.zeros((ny, nx), np.byte) + 255
-pref = None
 
 # set this to false to forego plotting/predicting on images
 build_plots = False
 build_scatter = False
 write_data = True
 tuning = True
+scoring = 'f1'
 
-# set this to true to subset the predictor data
-subset_pcs = False
-last_pc = 3
+# set wither to scale the data
+scale_data = True
+scale_pcs = True
+scaler = preprocessing.MinMaxScaler()
+pc_scaler = preprocessing.MinMaxScaler()
+
+# set whether to perform data rotation
+reduce_data = True
+write_pcs = False
+n_components = 2 # can be an int or None
+reducer = decomposition.PCA(n_components = n_components, whiten = True)
 
 # set the color palette
 palette = aei.color.color_blind
 
+# set the models to apply
+models = ["DecisionTree", "SVM", "MaxEnt", "AdaBoosting",
+    "GradientBoosting", "RandomForest"]
+output_models = []
+for model in models:
+    output_models.append("{base}Mesoamerica-prediction-{model}".format(
+        base = base + 'scratch/', model = model))
+
+#####
+# read, subset, and transform data as necessary
+
 # file for the GBIF points/random samples
-pc_file = base + 'data/mesoamerica_1km_pca.csv'
-ma_file = base + 'data/mesoamerica_predictor_data.csv'
-pc = pd.read_csv(pc_file)
-ma = pd.read_csv(ma_file)
+f = pd.read_csv(ma_file)
 
 # filter some bad data
-pc = pc[pc['PCA 1'] != 255]
-ma = ma[ma['TempMin (C)'] != 255]
+f = f[f['TempMin (C)'] != 255]
 
-# determine which features to plot/predict
-ftype = "Biophysical"
-f = ma
+# perform the data normalization from 0-1
+if scale_data:
+    
+    # remove label information prior to performing transform
+    classes = np.array(f.pop('class'))
+    colnames = list(f.columns)
+    
+    # fit and transform the data, then re-assemble as a full data frame
+    transform = scaler.fit_transform(f)
+    f = pd.concat([pd.DataFrame(classes, columns = ['class']), 
+        pd.DataFrame(transform, columns = colnames)], axis = 1)
+
+# perform the reduction
+if reduce_data:
+    
+    # remove label information prior to performing transform
+    classes = np.array(f.pop('class'))
+    colnames = []
+    for i in range(n_components):
+        colnames.append("PC {}".format(i + 1))
+    
+    # fit and transform the data
+    transform = reducer.fit_transform(f)
+    
+    # scale it, if set
+    if scale_pcs:
+        transform = pc_scaler.fit_transform(transform)
+    
+    # re-assemble as a full data frame
+    f = pd.concat([pd.DataFrame(classes, columns = ['class']), 
+        pd.DataFrame(transform, columns = colnames)], axis = 1)
+        
+    # create a label for biophysical or rotated data
+    ftype = "PCA"
+
+else:
+    ftype = "Biophysical"
 
 # split into the background, aegypti, and albopictus portions
 labels = ['background', 'aegypti', 'albopictus']
@@ -72,16 +113,6 @@ ae = f[f['class'] == 1]
 aa = f[f['class'] == 2]
 band_names = list(bk.columns)
 band_names.remove('class')
-
-# set the models to apply
-models = ["DecisionTree", "SVM", "RandomForest", "AdaBoosting",
-    "GradientBoosting", "MaxEnt"]
-mods = [tree.DecisionTreeClassifier(), svm.SVC(), ensemble.RandomForestClassifier(n_jobs = -1),
-    ensemble.GradientBoostingClassifier(), ensemble.AdaBoostClassifier(), linear_model.LogisticRegression()]
-output_models = []
-for model in models:
-    output_models.append("{base}Mesoamerica-prediction-{model}".format(
-        base = base + 'scratch/', model = model))
 
 #####
 # plot the density distributions, if you'd like
@@ -98,7 +129,8 @@ if build_plots:
         
         # plot the distributions
         plot = aei.plot.density_dist(vec, label = labels, 
-            xlabel = band_names[i], aei_color = palette)
+            xlabel = band_names[i], aei_color = palette, 
+            title = "{}\nDensity distributions".format(band_names[i]))
         
         # save the figure
         plot.savefig(fig_name, dpi = 200)
@@ -162,6 +194,57 @@ if build_scatter:
 #####
 # start classifying distributions
 
+# read raster data into memory if writing output
+if write_data:
+    
+    # open the file, get the metadata, read it into memory, and subset it
+    pref = gdal.Open(pred_file)
+    prj = pref.GetProjection()
+    geo = pref.GetGeoTransform()
+    nx = pref.RasterXSize
+    ny = pref.RasterYSize
+    b1 = pref.GetRasterBand(1).ReadAsArray()
+    gd = np.where(b1 != 255)
+    arr = pref.ReadAsArray()
+    pred = arr[:, gd[0], gd[1]].transpose()
+    arr = np.zeros((ny, nx), np.byte) + 255
+    pref = None
+    
+    # transform the raster data through scaling and rotating, if set
+    if scale_data:
+        pred = scaler.transform(pred)
+        
+    if reduce_data:
+        pred = reducer.transform(pred)
+        
+        if scale_pcs:
+            pred = pc_scaler.transform(pred)
+            
+        # write the output PC data if set
+        if write_pcs:
+            
+            # set output metadata
+            outfile = "{base}Mesoamerica-prediction-PCs.tif".format(
+                base = base + 'scratch/')
+            pc_nodata = -9999
+            pc_arr = np.zeros_like(arr, np.float32) + pc_nodata
+            
+            # write the output file
+            pref = gdal.GetDriverByName("GTiff").Create(outfile, nx, ny, n_components, gdal.GDT_Float32)
+            pref.SetProjection(prj)
+            pref.SetGeoTransform(geo)
+            
+            # loop through and write each band
+            for i in range(n_components):
+                pc_arr[gd[0], gd[1]] = pred[:,i]
+                bref = pref.GetRasterBand(i + 1)
+                bref.SetNoDataValue(pc_nodata)
+                bref.WriteArray(pc_arr)
+            
+            # clear memory
+            bref = None
+            pref = None
+
 # set albopictus class to 1 to run as binary classification
 aa['class'] = 1
 
@@ -178,35 +261,17 @@ raa = np.random.choice(nbk, naa)
 bkae = bk.iloc[rae].append(ae)
 bkaa = bk.iloc[raa].append(aa)
 
-# remove the last few pc's
-if subset_pcs:
-    for key in band_names[last_pc:]:
-        bkae.pop(key)
-        bkaa.pop(key)
-        band_names.remove(key)
-        pred = pred[:,0:last_pc]
-
 # convert to numpy arrays, and get y and xdata for each species
 yae = np.array(bkae.pop('class'))
 xae = np.array(bkae)
 yaa = np.array(bkaa.pop('class'))
 xaa = np.array(bkaa)
 
-# get global range of background data
-bk.pop('class')
-bk_min = np.array(bkae.min(axis = 0))
-bk_max = np.array(bkae.max(axis = 0))
-
-# scale data from 0-1
-xae_scaled = (xae - bk_min) / (bk_max - bk_min)
-xaa_scaled = (xaa - bk_min) / (bk_max - bk_min)
-pred_scaled = (pred - bk_min) / (bk_max - bk_min)
-
 # split into train/test groups
 xae_train, xae_test, yae_train, yae_test = train_test_split(
-    xae_scaled, yae, test_size = 0.25)
+    xae, yae, test_size = 0.25)
 xaa_train, xaa_test, yaa_train, yaa_test = train_test_split(
-    xaa_scaled, yaa, test_size = 0.25)
+    xaa, yaa, test_size = 0.25)
 
 # set up arrays to store performance metrics from each model
 nm = len(mods)
@@ -225,21 +290,18 @@ model_prediction_ae = np.zeros((nm, len(yae_test)))
 model_prediction_aa = np.zeros((nm, len(yaa_test)))
 
 # create the model tuning object, and the list of models to tune
-ae_tuner = aei.model.tune(xae_train, yae_train)
-aa_tuner = aei.model.tune(xaa_train, yaa_train)
-
-models = ["DecisionTree", "SVM", "RandomForest", "AdaBoosting",
-"GradientBoosting", "MaxEnt"]
+ae_tuner = aei.model.tune(xae_train, yae_train, scoring = scoring)
+aa_tuner = aei.model.tune(xaa_train, yaa_train, scoring = scoring)
 
 ae_model = [ae_tuner.DecisionTreeClassifier, ae_tuner.SVC, 
-    ae_tuner.RandomForestClassifier, ae_tuner.AdaBoostClassifier, 
-    ae_tuner.GradientBoostClassifier, ae_tuner.LogisticRegression]
+    ae_tuner.LogisticRegression, ae_tuner.AdaBoostClassifier, 
+    ae_tuner.GradientBoostClassifier, ae_tuner.RandomForestClassifier]
 aa_model = [aa_tuner.DecisionTreeClassifier, aa_tuner.SVC, 
-    aa_tuner.RandomForestClassifier, aa_tuner.AdaBoostClassifier, 
-    aa_tuner.GradientBoostClassifier, aa_tuner.LogisticRegression]
+    aa_tuner.LogisticRegression, aa_tuner.AdaBoostClassifier, 
+    aa_tuner.GradientBoostClassifier, aa_tuner.RandomForestClassifier]
 
 # iterate over each model
-for i in range(len(mods)):
+for i in range(len(models)):
     
     # report starting
     print("----------")
@@ -296,9 +358,14 @@ for i in range(len(mods)):
     # predict on the full image extent
     if write_data:
         
+        # save the model object
+        outmodel = '{}-aegypti-model-{}.pickle'.format(output_models[i], ftype)
+        with open(outmodel, 'w+') as f:
+            pickle.dump(model, f)
+        
         # run the prediction
         print("Predicting on image extent")
-        im_pred = model.predict(pred_scaled)
+        im_pred = model.predict(pred)
         arr[gd[0], gd[1]] = im_pred
         outfile = '{}-aegypti-{}.tif'.format(output_models[i], ftype)
         
@@ -367,9 +434,14 @@ for i in range(len(mods)):
     # predict on the full image extent
     if write_data:
         
+        # save the model object
+        outmodel = '{}-albopictus-model-{}.pickle'.format(output_models[i], ftype)
+        with open(outmodel, 'w+') as f:
+            pickle.dump(model, f)
+        
         # run the prediction
         print("Predicting on image extent")
-        im_pred = model.predict(pred_scaled)
+        im_pred = model.predict(pred)
         arr[gd[0], gd[1]] = im_pred
         outfile = '{}-albopictus-{}.tif'.format(output_models[i], ftype)
         
@@ -407,11 +479,11 @@ for i in range(len(metrics)):
         color = colors[2], label = 'albopictus training data', alpha = alpha, edgecolor = edgecolor)
     plt.bar(index + bar_width * 3, test_vars[i][:,1], bar_width,
         color = colors[3], label = "albopictus test data", alpha = alpha, edgecolor = edgecolor)
-    plt.xlabel("Model Type")
+    #plt.xlabel("Model Type")
     plt.ylabel(metrics[i])
     plt.title("{} model {}".format(ftype, metrics[i]))
-    plt.xticks(index + (1.5 * bar_width), models)
-    plt.legend()
+    plt.xticks(index + (1.5 * bar_width), models, rotation = 'vertical')
+    plt.legend(loc = 'lower right')
     plt.tight_layout()
     
 # and plot the accuracy/AUC scores for each model
@@ -425,10 +497,10 @@ plt.bar(index + bar_width * 2, test_acc[:,1], bar_width, color = colors[2],
     label = 'albopictus accuracy', alpha = alpha, edgecolor = edgecolor)
 plt.bar(index + bar_width * 3, test_auc[:,1], bar_width, color = colors[3],
     label = 'albopictus AUC', alpha = alpha, edgecolor = edgecolor)
-plt.xlabel("Model Type")
+#plt.xlabel("Model Type")
 plt.ylabel("Score")
 plt.title("{} model accuracy scores".format(ftype))
-plt.xticks(index + (1.5 * bar_width), models)
-plt.legend()
+plt.xticks(index + (1.5 * bar_width), models, rotation = 'vertical')
+plt.legend(loc = 'lower right')
 plt.ylim(0.25, 0.9)
 plt.tight_layout()
