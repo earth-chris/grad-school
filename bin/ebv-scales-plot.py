@@ -1,9 +1,17 @@
 # plots the satellite scale data
 import aei
+import numpy as np
 import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
+from matplotlib import lines
+
+# function to create legend proxies
+def create_proxy(color, marker):
+    line = lines.Line2D([0], [0], linestyle='none', mfc=color,
+        mec='black', marker=marker)
+    return line
 
 # function to label new colors
 def label_color(row, colorby, unique_vals, colors):
@@ -20,36 +28,53 @@ df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
 xdata = 'Plot revisit time'
-xlabel = "Frequency (days between revisit)"
+xlabel = "\nFrequency (days between revisit)"
 ydata = 'Plot resolution'
-ylabel = "Spatial resolution (m)"
+ylabel = "Spatial resolution (m)\n"
 title = "Spatiotemporal Scales of\nBiodiversity Measurements from Earth Observations"
 
 # set variable to color by
 colorby = 'EBV Class'
 unique = list(df[colorby].unique())
+unique.sort()
 ncolors = len(unique)
-colors = aei.color.color_blind(ncolors)
-colors = []
-color_map = cm.Dark2
-for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
-    colors.append(color_map(val))
+#colors = aei.color.color_blind(ncolors)
+#colors = aei.color.color_blind()
+colors = aei.objects.color(palette = ['#E56C2D', '#F1A53A', '#00A583', '#0081B4', '#F5E369'], 
+    n = ncolors).palette
+#colors = []
+#color_map = cm.Dark2
+#for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
+#    colors.append(color_map(val))
 #df['scatter_color'] = df.apply(lambda row: label_color(
 #    row, colorby, unique, colors), axis = 1)
+
+# add columns to the data frame for plotting in a single go
+dfl = len(df)
+markers = ['o', 'D']
+marker_titles = ['Active', 'Decomissioned']
+df['Shape'] = pd.Series(np.repeat(markers[0], dfl))
+df['Shape'][df['Decomission Year'] < 2018] = markers[1]
 
 plt.figure()
 # plot by unique color scheme
 for i in range(ncolors):
     fl = df[(df[colorby] == unique[i])]
-    plt.scatter(x = fl[xdata], y = fl[ydata], c = colors[i], 
-        alpha = 0.9, label = unique[i], s = 175,
-        edgecolor='black', linewidth='1')
+    #plt.scatter(x = fl[xdata], y = fl[ydata], c = colors[i], 
+    #    alpha = 0.9, label = unique[i], s = 175, marker = fl['Shape'],
+    #    edgecolor='black', linewidth='1')
+
+    for marker in markers:
+        fc = fl[(fl['Shape'] == marker)]
+        plt.scatter(x = fc[xdata], y = fc[ydata], c = colors[i], 
+            alpha = 0.9, label = unique[i], s = 175, marker = marker,
+            edgecolor='black', linewidth='1')
     
 # add titles/labels        
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 plt.title(title)
-plt.legend(loc = 'lower left', ncol = 2)
+#plt.legend(loc = 'lower left', ncol = 2)
 
 # handle axes
 xmin = df[xdata].min() * 0.8
@@ -62,6 +87,12 @@ ax = plt.gca()
 ax.invert_xaxis()
 ax.invert_yaxis()
 ax.loglog()
+#ax.arrow(xmin, 0, xmax-xmin, 0)
+#ax.arrow(0, ymin, 0, ymax-ymin)
+
+# set the ticks
+plt.xticks([1e0, 1e1, 50], ['1', '10', '50'])
+plt.yticks([1e0, 1e1, 1e2, 1e3], ['1', '10', '100', '1000'])
 
 # annotate each point
 annotate = 'Sensor Name'
@@ -74,9 +105,32 @@ for i in range(len(df)):
         textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
         bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1))
 
+# custom build the legend
+legend = list(unique)
+legend.append(marker_titles[0])
+legend.append(marker_titles[1])
+#legend.append('')
+#legend.append('')
+legend_colors = list(colors)
+legend_colors.append((0.8,0.8,0.8))
+legend_colors.append((0.8,0.8,0.8))
+#legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
+legend_marker = list(np.repeat(markers[0], ncolors))
+legend_marker.append(markers[0])
+legend_marker.append(markers[1])
+#legend_marker.append('')
+#legend_marker.append('')
+proxies = []
+for i in range(len(legend)):
+    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))
+    
+plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
+    markerscale = 2)
+
 # full plot
 plt.tight_layout()
-ax.plot()
+plt.show()
 
 ##########
 # bar plot of timeline for missions
@@ -102,7 +156,7 @@ width = [i-j for i,j in zip(df_sorted[wdata], df_sorted[ydata])]
 
 # set the minimum year for the plot base
 min_year = 1970 # min(df_sorted[ydata]) - 1
-max_year = 2018 # max(df_sorted[wdata]) + 1
+max_year = 2019 # max(df_sorted[wdata]) + 1
 
 # plot as a bar chart
 fig, ax1 = plt.subplots()
