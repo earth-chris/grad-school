@@ -6,6 +6,10 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from matplotlib import lines
+from matplotlib import rc
+
+# activate latex text rendering
+#rc('text', usetex=True)
 
 # function to create legend proxies
 def create_proxy(color, marker):
@@ -56,6 +60,11 @@ marker_titles = ['Active', 'Decomissioned']
 df['Shape'] = pd.Series(np.repeat(markers[0], dfl))
 df['Shape'][df['Decomission Year'] < 2018] = markers[1]
 
+styles = ['normal', 'italic']
+styles_titles = ['Active', 'Decomissioned']
+df['Style'] = pd.Series(np.repeat(styles[0], dfl))
+df['Style'][df['Decomission Year'] < 2018] = styles[1]
+
 plt.figure()
 # plot by unique color scheme
 for i in range(ncolors):
@@ -103,29 +112,33 @@ for i in range(len(df)):
         arrowprops = dict(arrowstyle = '-', color = 'black'),
         #textcoords = 'offset points', ha = 'left', va = 'bottom',
         textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
-        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1))
+        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1),
+        fontstyle = df['Style'][i])
 
 # custom build the legend
 legend = list(unique)
 legend.append(marker_titles[0])
 legend.append(marker_titles[1])
-#legend.append('')
-#legend.append('')
+legend.append(styles_titles[0])
+legend.append('')
+legend.append('$\it{style}$'.format(style=styles_titles[1]))
 legend_colors = list(colors)
 legend_colors.append((0.8,0.8,0.8))
 legend_colors.append((0.8,0.8,0.8))
-#legend_colors.append((0,0,0))
-#legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
 legend_marker = list(np.repeat(markers[0], ncolors))
 legend_marker.append(markers[0])
 legend_marker.append(markers[1])
-#legend_marker.append('')
-#legend_marker.append('')
+legend_marker.append('')
+legend_marker.append('')
+legend_marker.append('')
 proxies = []
 for i in range(len(legend)):
     proxies.append(create_proxy(legend_colors[i], legend_marker[i]))
     
-plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
+plt.legend(proxies, legend, loc = 'lower left', ncol = 2,
     markerscale = 2)
 
 # full plot
