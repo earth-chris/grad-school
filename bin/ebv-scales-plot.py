@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from matplotlib import lines
 from matplotlib import rc
+from matplotlib import colors as cols
 
 # activate latex text rendering
 #rc('text', usetex=True)
 
 # function to create legend proxies
-def create_proxy(color, marker):
-    line = lines.Line2D([0], [0], linestyle='none', mfc=color,
+def create_proxy(color, marker, linestyle='none'):
+    line = lines.Line2D([0], [0], linestyle=linestyle, mfc=color,
         mec='black', marker=marker)
     return line
 
@@ -32,9 +33,9 @@ df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
 xdata = 'Plot revisit time'
-xlabel = "\nFrequency (days between revisit)"
+xlabel = "low                                      high\nFrequency (days between revisit)"
 ydata = 'Plot resolution'
-ylabel = "Spatial resolution (m)\n"
+ylabel = "Spatial resolution (m)\nlow                     high"
 title = "Spatiotemporal Scales of\nBiodiversity Measurements from Earth Observations"
 
 # set variable to color by
@@ -44,7 +45,7 @@ unique.sort()
 ncolors = len(unique)
 #colors = aei.color.color_blind(ncolors)
 #colors = aei.color.color_blind()
-colors = aei.objects.color(palette = ['#E56C2D', '#F1A53A', '#00A583', '#0081B4', '#F5E369'], 
+colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
     n = ncolors).palette
 #colors = []
 #color_map = cm.Dark2
@@ -56,14 +57,16 @@ colors = aei.objects.color(palette = ['#E56C2D', '#F1A53A', '#00A583', '#0081B4'
 # add columns to the data frame for plotting in a single go
 dfl = len(df)
 markers = ['o', 'D']
-marker_titles = ['Active', 'Decomissioned']
+marker_titles = ['Continuous', 'Discrete']
+#linestyle = ['solid', 'dashed']
 df['Shape'] = pd.Series(np.repeat(markers[0], dfl))
-df['Shape'][df['Decomission Year'] < 2018] = markers[1]
+df['Shape'][df['Coverage'] == marker_titles[1]] = markers[1]
+#alphas = [0.9, 0.9]
 
-styles = ['normal', 'italic']
-styles_titles = ['Active', 'Decomissioned']
-df['Style'] = pd.Series(np.repeat(styles[0], dfl))
-df['Style'][df['Decomission Year'] < 2018] = styles[1]
+#styles = ['normal', 'italic']
+#styles_titles = ['Active', 'Decomissioned']
+#df['Style'] = pd.Series(np.repeat(styles[0], dfl))
+#df['Style'][df['Decomission Year'] < 2018] = styles[1]
 
 plt.figure()
 # plot by unique color scheme
@@ -73,11 +76,19 @@ for i in range(ncolors):
     #    alpha = 0.9, label = unique[i], s = 175, marker = fl['Shape'],
     #    edgecolor='black', linewidth='1')
 
-    for marker in markers:
-        fc = fl[(fl['Shape'] == marker)]
-        plt.scatter(x = fc[xdata], y = fc[ydata], c = colors[i], 
-            alpha = 0.9, label = unique[i], s = 175, marker = marker,
-            edgecolor='black', linewidth='1')
+    for j in range(len(markers)):
+        print("label: {label}".format(label=unique[i]))
+        print('color: {color}'.format(color=colors[i]))
+        print('marker: {marker}'.format(marker=markers[j]))
+        fc = fl[(fl['Shape'] == markers[j])]
+        c = cols.to_hex(colors[i])
+        #if len(fc) == len(colors[i]):
+        #    c = cols.to_hex(colors[i])
+        #else:
+        #    c = cols[i]
+        plt.scatter(x = fc[xdata], y = fc[ydata], c = c, 
+            alpha = 0.9, label = unique[i], s = 195, marker = markers[j],
+            edgecolor='black')#, linewidth='1')
     
 # add titles/labels        
 plt.xlabel(xlabel)
@@ -112,33 +123,39 @@ for i in range(len(df)):
         arrowprops = dict(arrowstyle = '-', color = 'black'),
         #textcoords = 'offset points', ha = 'left', va = 'bottom',
         textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
-        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.1),
-        fontstyle = df['Style'][i])
+        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.15),
+        )# fontstyle = df['Style'][i])
 
 # custom build the legend
 legend = list(unique)
-legend.append(marker_titles[0])
 legend.append(marker_titles[1])
-legend.append(styles_titles[0])
-legend.append('')
-legend.append('$\it{style}$'.format(style=styles_titles[1]))
+legend.append(marker_titles[0])
+#legend.append('')
+#legend.append('{style}'.format(style=styles_titles[0]))
+#legend.append('$\it{style}$'.format(style=styles_titles[1]))
 legend_colors = list(colors)
-legend_colors.append((0.8,0.8,0.8))
-legend_colors.append((0.8,0.8,0.8))
-legend_colors.append((0,0,0))
-legend_colors.append((0,0,0))
-legend_colors.append((0,0,0))
+legend_colors.append((1,1,1))
+legend_colors.append((1,1,1))
+#legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
 legend_marker = list(np.repeat(markers[0], ncolors))
-legend_marker.append(markers[0])
 legend_marker.append(markers[1])
-legend_marker.append('')
-legend_marker.append('')
-legend_marker.append('')
+legend_marker.append(markers[0])
+#legend_marker.append('')
+#legend_marker.append('')
+#legend_marker.append('')
+#legend_linestyle = list(np.repeat(linestyle[0], ncolors))
+#legend_linestyle.append(linestyle[0])
+#legend_linestyle.append(linestyle[1])
+#legend_linestyle.append('')
+#legend_linestyle.append('')
+#legend_linestyle.append('')
 proxies = []
 for i in range(len(legend)):
-    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))
+    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
     
-plt.legend(proxies, legend, loc = 'lower left', ncol = 2,
+plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
     markerscale = 2)
 
 # full plot
