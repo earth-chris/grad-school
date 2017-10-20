@@ -33,9 +33,9 @@ df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
 xdata = 'Plot revisit time'
-xlabel = "low                                      high\nFrequency (days between revisit)"
+xlabel = "low  --------------->  high\nFrequency (days between revisit)"
 ydata = 'Plot resolution'
-ylabel = "Spatial resolution (m)\nlow                     high"
+ylabel = "Grain (m)\ncoarse  --------------->  fine"
 title = "Spatiotemporal Scales of\nBiodiversity Measurements from Earth Observations"
 
 # set variable to color by
@@ -47,7 +47,7 @@ ncolors = len(unique)
 #colors = aei.color.color_blind()
 colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
     n = ncolors).palette
-#colors = []
+
 #color_map = cm.Dark2
 #for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
 #    colors.append(color_map(val))
@@ -63,10 +63,10 @@ df['Shape'] = pd.Series(np.repeat(markers[0], dfl))
 df['Shape'][df['Coverage'] == marker_titles[1]] = markers[1]
 #alphas = [0.9, 0.9]
 
-#styles = ['normal', 'italic']
-#styles_titles = ['Active', 'Decomissioned']
-#df['Style'] = pd.Series(np.repeat(styles[0], dfl))
-#df['Style'][df['Decomission Year'] < 2018] = styles[1]
+styles = ['normal', 'italic']
+styles_titles = ['Open access', 'Restricted']
+df['Style'] = pd.Series(np.repeat(styles[0], dfl))
+df['Style'][df['Access'] == styles_titles[1]] = styles[1]
 
 plt.figure()
 # plot by unique color scheme
@@ -124,27 +124,27 @@ for i in range(len(df)):
         #textcoords = 'offset points', ha = 'left', va = 'bottom',
         textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
         bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.15),
-        )# fontstyle = df['Style'][i])
+        fontstyle = df['Style'][i])
 
 # custom build the legend
 legend = list(unique)
 legend.append(marker_titles[1])
 legend.append(marker_titles[0])
-#legend.append('')
-#legend.append('{style}'.format(style=styles_titles[0]))
-#legend.append('$\it{style}$'.format(style=styles_titles[1]))
+legend.append('')
+legend.append('{style}'.format(style=styles_titles[0]))
+legend.append('$\it{style}$'.format(style=styles_titles[1]))
 legend_colors = list(colors)
 legend_colors.append((1,1,1))
 legend_colors.append((1,1,1))
-#legend_colors.append((0,0,0))
-#legend_colors.append((0,0,0))
-#legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
 legend_marker = list(np.repeat(markers[0], ncolors))
 legend_marker.append(markers[1])
 legend_marker.append(markers[0])
-#legend_marker.append('')
-#legend_marker.append('')
-#legend_marker.append('')
+legend_marker.append('')
+legend_marker.append('')
+legend_marker.append('')
 #legend_linestyle = list(np.repeat(linestyle[0], ncolors))
 #legend_linestyle.append(linestyle[0])
 #legend_linestyle.append(linestyle[1])
@@ -155,7 +155,7 @@ proxies = []
 for i in range(len(legend)):
     proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
     
-plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
+plt.legend(proxies, legend, loc = 'lower left', ncol = 2,
     markerscale = 2)
 
 # full plot
@@ -173,8 +173,27 @@ ylabel = "Earth Observation Mission"
 ytlabel = 'Sensor Name'
 title = 'Timeline of Earth Observations of Biodiversity'
 
+# set variable to color by
+colorby = 'EBV Class'
+unique = list(df[colorby].unique())
+unique.sort()
+ncolors = len(unique)
+#colors = aei.color.color_blind(ncolors)
+#colors = aei.color.color_blind()
+    
+#distinct colors
+colors = aei.objects.color(palette = ['#e6194b', '#C05354', '#C28053', '#A89846', '#FEF866',
+    '#98E55A', '#6CE4B3', '#69C6E2', '#71B4FF', '#617BE3',
+    '#8F5EFF', '#F95FF6', '#A54396', '#F86791'], 
+    n = ncolors).palette
+    
+#colors = aei.color.color_blind()
+colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
+    n = ncolors).palette
+
 # sort the data frame by start year
-df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
+#df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
+df_sorted = df.sort_values(by = ['Sensor order', 'Launch Year'], ascending = [1,1]).reset_index(drop = True)
 
 # set the number of locations to plot
 w = 1.0
