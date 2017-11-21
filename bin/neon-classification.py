@@ -4,6 +4,7 @@
 
 # package imports
 import aei
+import copy
 import pickle
 import numpy as np
 import pandas as pd
@@ -36,6 +37,7 @@ remove_outliers = True
 plot_spectra = False
 reduce_dims = True
 tune_params = False
+tune_ovo = True
 use_transformed = True
 
 ##########
@@ -98,6 +100,9 @@ bb = bands == 1
 # first, perform a dimensionality reduction if set
 if remove_outliers:
     
+    if verbose:
+        print("[ STATUS ]: Removing outliers from dataset")
+    
     # we'll perform a PCA, just look through the first 20 or so components, and remove
     #  data points more than 3 stdv outside the mean
     mask = np.repeat(True, len(crid))
@@ -106,10 +111,11 @@ if remove_outliers:
     reducer.fit(refl[:,gb])
     
     # print some stats
-    print('Explained variance:')
-    print('\n'.join('PC {:0.3f}: {}'.format(*k) for k in enumerate(reducer.explained_variance_)))
-    print('Explained variance ratio:')
-    print('\n'.join('PC {:0.3f}: {}'.format(*k) for k in enumerate(reducer.explained_variance_ratio_)))
+    if verbose:
+        print('Explained variance:')
+        print('\n'.join('PC {:0.3f}: {}'.format(*k) for k in enumerate(reducer.explained_variance_)))
+        print('Explained variance ratio:')
+        print('\n'.join('PC {:0.3f}: {}'.format(*k) for k in enumerate(reducer.explained_variance_ratio_)))
     
     # transform the input data
     transformed = reducer.transform(refl[:,gb])
@@ -156,7 +162,7 @@ for i in range(n_species):
         
         # save the figure for later
         path_fig = path_sep.join([path_plots, sp_unique[i]])
-        plt.savefig(path_fig + '.png')
+        plt.savefig(path_fig + '.png', dpi = 300)
         plt.close()
         
 #####
@@ -173,7 +179,7 @@ if reduce_dims:
     reducer_output = path_sep.join([path_outputs, 'Data_transformer.pickle'])
     
 ######
-# 5. Model tuning
+# 5a. One-vs-all model tuning
 
 # we're going to tune a one-vs-all classification approach based on balanced 
 #  training and testing data sets
@@ -198,6 +204,9 @@ if use_transformed:
     target_data = transformed
 else:
     target_data = refl
+    
+if verbose:
+    print("[ STATUS ]: Beginning one-vs-all classification")
 
 # loop through and classify as each species vs all    
 for i in range(n_species):
@@ -316,9 +325,164 @@ for i in range(n_species):
     if verbose:
         print("[ STATUS ]: ----------")
         
-# ok, now that we have performed the cross validation and 
+# ok, now that we have performed the cross validation for each model, plot out the cv results
 plt.figure()
-plt.errorbar(sp_unique, mean_svc, yerr = stdv_svc)
+plt_x = np.arange(len(sp_unique))
+plt.errorbar(plt_x-0.15, mean_svc, yerr = stdv_svc, fmt = 'o', label = 'SVC')
+plt.errorbar(plt_x, mean_gbc, yerr = stdv_gbc, fmt = 'o', label = 'GBC')
+plt.errorbar(plt_x+0.15, mean_rfc, yerr = stdv_rfc, fmt = 'o', label = 'RFC')
 plt.ylabel(scoring)
-plt.xlavel('Species')
-plt.title('SVC cross validation performance')
+plt.xticks(plt_x, sp_unique, rotation = 'vertical')
+plt.title('One-vs-all cross validation performance')
+plt.legend()
+plt.tight_layout()
+
+# save the figure
+path_fig = path_sep.join([path_plots, 'Cross validation results.png'])
+plt.savefig(path_fig, dpi=300)
+
+######
+# 5b. One-vs-one model tuning
+
+# create dictionaries to store the tuning parameters, and 2d arrays
+#  to store the scores
+best_params_svc, best_params_gbc, best_params_rfc = {}, {}, {}
+best_score_svc = np.zeros((n_species, n_species), dtype = np.float)
+best_score_gbc = copy.copy(best_score_svc)
+best_score_rfc = copy.copy(best_score_svc)
+mean_svc = copy.copy(best_score_svc)
+stdv_svc = copy.copy(best_score_svc)
+mean_gbc = copy.copy(best_score_svc)
+stdv_gbc = copy.copy(best_score_svc)
+mean_rfc = copy.copy(best_score_svc)
+stdv_rfc = copy.copy(best_score_svc)
+
+if verbose:
+    print("[ STATUS ]: Beginning one-vs-one classification")
+
+# loop through and classify as each species vs all    
+for i in range(n_species):
+    
+    # since we don't need to repeat classifications (e.g., sp 1 vs 2, then 2 vs 1),
+    #  remove all sp. of (i) that have already done the one vs one.
+    #non_target_species = range(n_species)
+    #for k in range(i+1):
+    #    non_target_species.pop(k)
+        
+    non_target_species = np.arange(n_species - (i + 1)) + (i + 1)
+        
+    # ok, now loop through all of the novel one vs one combinations
+    for j in non_target_species:
+        if verbose:
+            print("[ STATUS ]: Classifying species: {} vs. {}".format(sp_unique[i], sp_unique[j]))
+        
+        # we'll balance the data sets based on the lowest-sampled class
+        ind_target = np.where(spid == i)
+        ind_backgr = np.where(spid == j)
+        
+        n_per_class = np.min((len(ind_target[0]), len(ind_backgr[0])))
+        
+        # create the arrays to store the randomly sampled classes
+        tuning_x = np.zeros((n_per_class * 2, target_data.shape[1]))
+        tuning_y = np.zeros(n_per_class * 2, dtype = np.uint8)
+        tuning_y[n_per_class:] = 1
+        
+        # sample the background class first
+        rnd_backgr = ind_backgr[0][np.random.choice(len(ind_backgr[0]), n_per_class)]
+        tuning_x[0:n_per_class] = target_data[rnd_backgr]
+        
+        # then, the target class
+        rnd_target = ind_target[0][np.random.choice(len(ind_target[0]), n_per_class)]
+        tuning_x[n_per_class:] = target_data[rnd_target]
+        
+        # set the path for the output files
+        sp_pair = "{}-{}".format(sp_unique[i], sp_unique[j])
+        svc_pca_outputs = path_sep.join([path_ovo, "{} SVC params.pickle".format(sp_pair)])
+        gbc_pca_outputs = path_sep.join([path_ovo, "{} GBC params.pickle".format(sp_pair)])
+        rfc_pca_outputs = path_sep.join([path_ovo, "{} RFC params.pickle".format(sp_pair)])
+        
+        # now that we've got each class sampled, we'll tune a bunch of parameters
+        if tune_ovo:
+            if verbose:
+                print("[ STATUS ]: Tuning model parameters")
+                
+            # first, SVC
+            model_tuning = aei.model.tune(tuning_x, tuning_y)
+            model_tuning.SVC()
+            best_params_svc[sp_pair] = model_tuning.best_params
+            best_score_svc[i, j] = model_tuning.best_score
+            with open(svc_pca_outputs, 'wb') as f:
+                pickle.dump(model_tuning.best_params, f)
+            
+            # second, gradient boosting
+            model_tuning.param_grid = None
+            model_tuning.GradientBoostClassifier()
+            best_params_gbc[sp_pair] = model_tuning.best_params
+            best_score_gbc[i, j] = model_tuning.best_score
+            with open(gbc_pca_outputs, 'wb') as f:
+                pickle.dump(model_tuning.best_params, f)
+            
+            # finally, random forest
+            model_tuning.param_grid = None
+            model_tuning.RandomForestClassifier()
+            best_params_rfc[sp_pair] = model_tuning.best_params
+            best_score_rfc[i, j] = model_tuning.best_score
+            with open(rfc_pca_outputs, 'wb') as f:
+                pickle.dump(model_tuning.best_params, f)
+                    
+        else:
+            with open(svc_pca_outputs, 'rb') as f:
+                best_params_svc[sp_pair] = pickle.load(f)
+            with open(gbc_pca_outputs, 'rb') as f:
+                best_params_gbc[sp_pair] = pickle.load(f)
+            with open(rfc_pca_outputs, 'rb') as f:
+                best_params_rfc[sp_pair] = pickle.load(f)
+                    
+            # ok, now that we have the best parameters for each model type, let's perform some
+            #  cross validation to assess model performance
+            scoring = 'accuracy'
+            
+            if verbose:
+                print("[ STATUS ]: Performing cross validation")
+            
+            # first, svm
+            svc = svm.SVC(**best_params_svc[sp_pair])
+            cv_score_svc = model_selection.cross_val_score(svc, tuning_x, tuning_y, scoring = scoring)
+            mean_svc[i,j] = cv_score_svc.mean()
+            stdv_svc[i,j] = cv_score_svc.std() * 2
+            
+            # next, gradient boosting
+            gbc = ensemble.GradientBoostingClassifier(**best_params_gbc[sp_pair])
+            cv_score_gbc = model_selection.cross_val_score(gbc, tuning_x, tuning_y, scoring = scoring)
+            mean_gbc[i,j] = cv_score_gbc.mean()
+            stdv_gbc[i,j] = cv_score_gbc.std() * 2
+            
+            # finally, random forest
+            rfc = ensemble.RandomForestClassifier(**best_params_rfc[sp_pair])
+            cv_score_rfc = model_selection.cross_val_score(rfc, tuning_x, tuning_y, scoring = scoring)
+            mean_rfc[i,j] = cv_score_rfc.mean()
+            stdv_rfc[i,j] = cv_score_rfc.std() * 2
+            
+            if verbose:
+                print("[ STATUS ]: Fitting and saving final models")
+            
+            # train and save the final models using all data
+            svc.fit(tuning_x, tuning_y)
+            svc_file = path_sep.join([path_ova, '{} SVC model.pickle'.format(sp_pair)])
+            with open(svc_file, 'wb') as f:
+                pickle.dump(svc, f)
+            
+            gbc.fit(tuning_x, tuning_y)
+            gbc_file = path_sep.join([path_ova, '{} GBC model.pickle'.format(sp_pair)])
+            with open(gbc_file, 'wb') as f:
+                pickle.dump(gbc, f)
+                
+            rfc.fit(tuning_x, tuning_y)
+            rfc_file = path_sep.join([path_ova, '{} RFC model.pickle'.format(sp_pair)])
+            with open(rfc_file, 'wb') as f:
+                pickle.dump(rfc, f)
+                
+            if verbose:
+                print("[ STATUS ]: ----------")
+                
+# alright, next steps are going to be plotting out the results of the one vs one confusion matrix
