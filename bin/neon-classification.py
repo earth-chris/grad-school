@@ -438,51 +438,51 @@ for i in range(n_species):
             with open(rfc_pca_outputs, 'rb') as f:
                 best_params_rfc[sp_pair] = pickle.load(f)
                     
-            # ok, now that we have the best parameters for each model type, let's perform some
-            #  cross validation to assess model performance
-            scoring = 'accuracy'
+        # ok, now that we have the best parameters for each model type, let's perform some
+        #  cross validation to assess model performance
+        scoring = 'accuracy'
+        
+        if verbose:
+            print("[ STATUS ]: Performing cross validation")
+        
+        # first, svm
+        svc = svm.SVC(**best_params_svc[sp_pair])
+        cv_score_svc = model_selection.cross_val_score(svc, tuning_x, tuning_y, scoring = scoring)
+        mean_svc[i,j] = cv_score_svc.mean()
+        stdv_svc[i,j] = cv_score_svc.std() * 2
+        
+        # next, gradient boosting
+        gbc = ensemble.GradientBoostingClassifier(**best_params_gbc[sp_pair])
+        cv_score_gbc = model_selection.cross_val_score(gbc, tuning_x, tuning_y, scoring = scoring)
+        mean_gbc[i,j] = cv_score_gbc.mean()
+        stdv_gbc[i,j] = cv_score_gbc.std() * 2
+        
+        # finally, random forest
+        rfc = ensemble.RandomForestClassifier(**best_params_rfc[sp_pair])
+        cv_score_rfc = model_selection.cross_val_score(rfc, tuning_x, tuning_y, scoring = scoring)
+        mean_rfc[i,j] = cv_score_rfc.mean()
+        stdv_rfc[i,j] = cv_score_rfc.std() * 2
+        
+        if verbose:
+            print("[ STATUS ]: Fitting and saving final models")
+        
+        # train and save the final models using all data
+        svc.fit(tuning_x, tuning_y)
+        svc_file = path_sep.join([path_ova, '{} SVC model.pickle'.format(sp_pair)])
+        with open(svc_file, 'wb') as f:
+            pickle.dump(svc, f)
+        
+        gbc.fit(tuning_x, tuning_y)
+        gbc_file = path_sep.join([path_ova, '{} GBC model.pickle'.format(sp_pair)])
+        with open(gbc_file, 'wb') as f:
+            pickle.dump(gbc, f)
             
-            if verbose:
-                print("[ STATUS ]: Performing cross validation")
+        rfc.fit(tuning_x, tuning_y)
+        rfc_file = path_sep.join([path_ova, '{} RFC model.pickle'.format(sp_pair)])
+        with open(rfc_file, 'wb') as f:
+            pickle.dump(rfc, f)
             
-            # first, svm
-            svc = svm.SVC(**best_params_svc[sp_pair])
-            cv_score_svc = model_selection.cross_val_score(svc, tuning_x, tuning_y, scoring = scoring)
-            mean_svc[i,j] = cv_score_svc.mean()
-            stdv_svc[i,j] = cv_score_svc.std() * 2
-            
-            # next, gradient boosting
-            gbc = ensemble.GradientBoostingClassifier(**best_params_gbc[sp_pair])
-            cv_score_gbc = model_selection.cross_val_score(gbc, tuning_x, tuning_y, scoring = scoring)
-            mean_gbc[i,j] = cv_score_gbc.mean()
-            stdv_gbc[i,j] = cv_score_gbc.std() * 2
-            
-            # finally, random forest
-            rfc = ensemble.RandomForestClassifier(**best_params_rfc[sp_pair])
-            cv_score_rfc = model_selection.cross_val_score(rfc, tuning_x, tuning_y, scoring = scoring)
-            mean_rfc[i,j] = cv_score_rfc.mean()
-            stdv_rfc[i,j] = cv_score_rfc.std() * 2
-            
-            if verbose:
-                print("[ STATUS ]: Fitting and saving final models")
-            
-            # train and save the final models using all data
-            svc.fit(tuning_x, tuning_y)
-            svc_file = path_sep.join([path_ova, '{} SVC model.pickle'.format(sp_pair)])
-            with open(svc_file, 'wb') as f:
-                pickle.dump(svc, f)
-            
-            gbc.fit(tuning_x, tuning_y)
-            gbc_file = path_sep.join([path_ova, '{} GBC model.pickle'.format(sp_pair)])
-            with open(gbc_file, 'wb') as f:
-                pickle.dump(gbc, f)
-                
-            rfc.fit(tuning_x, tuning_y)
-            rfc_file = path_sep.join([path_ova, '{} RFC model.pickle'.format(sp_pair)])
-            with open(rfc_file, 'wb') as f:
-                pickle.dump(rfc, f)
-                
-            if verbose:
-                print("[ STATUS ]: ----------")
+        if verbose:
+            print("[ STATUS ]: ----------")
                 
 # alright, next steps are going to be plotting out the results of the one vs one confusion matrix
