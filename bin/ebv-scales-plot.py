@@ -77,9 +77,9 @@ for i in range(ncolors):
     #    edgecolor='black', linewidth='1')
 
     for j in range(len(markers)):
-        print("label: {label}".format(label=unique[i]))
-        print('color: {color}'.format(color=colors[i]))
-        print('marker: {marker}'.format(marker=markers[j]))
+        #print("label: {label}".format(label=unique[i]))
+        #print('color: {color}'.format(color=colors[i]))
+        #print('marker: {marker}'.format(marker=markers[j]))
         fc = fl[(fl['Shape'] == markers[j])]
         c = cols.to_hex(colors[i])
         #if len(fc) == len(colors[i]):
@@ -158,9 +158,25 @@ for i in range(len(legend)):
 plt.legend(proxies, legend, loc = 'lower left', ncol = 2,
     markerscale = 2)
 
-# full plot
+# set the figure size explicitly to fit full page width
+xwidth = 6.811 # 173 millimeters is full width limit
+ywidth = xwidth * 0.75
+scaler = 1.5
+fig = plt.gcf()
+fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
-plt.show()
+
+# save the output file
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.tif',
+    dpi=600/scaler)
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.png',
+dpi=600/scaler)
+    
+plt.close()
+
+# full plot
+#plt.tight_layout()
+#plt.show()
 
 ##########
 # bar plot of timeline for missions
@@ -207,6 +223,12 @@ width = [i-j for i,j in zip(df_sorted[wdata], df_sorted[ydata])]
 min_year = 1970 # min(df_sorted[ydata]) - 1
 max_year = 2019 # max(df_sorted[wdata]) + 1
 
+# find the y position to place a dividing line
+ysplit = np.where(df_sorted['Sensor order'] == 2)[0].min()
+
+# move the ydata for each one down a notch
+y[ysplit:] += 1
+
 # plot as a bar chart
 fig, ax1 = plt.subplots()
 for i in range(ncolors):
@@ -223,6 +245,9 @@ for i in range(ncolors):
 for i in range(len(df_sorted)):
     ax1.plot((min_year, df_sorted[ydata][i]),
         (y[i], y[i]), '--', c = 'black', alpha = 0.2)
+        
+# add a solid line to distinguish between active and passive sensors
+ax1.plot((min_year-2, max_year+2), (ysplit, ysplit), '-', c = 'black', linewidth = 0.5)
 
 # annotate with sensor information
 ax = plt.gca()
@@ -231,19 +256,65 @@ for i in range(len(df_sorted)):
     ax.annotate(df_sorted[annotate][i],
         xy = (df_sorted[ydata][i]-0.5, y[i]), #+ (width[i]/2.), y[i]),
         ha = 'right', va = 'center',
-        bbox = dict(boxstyle = 'round, pad=0.1', lw=0, fc = 'white'))
+        bbox = dict(boxstyle = 'round, pad=0.1', lw=0, fc = 'white'),
+        fontstyle = df_sorted['Style'][i])
     
+# set italics for ylabels
+ytick_labels = []
+for i in range(len(df_sorted)):
+    if df_sorted['Style'][i] == 'italic':
+        ytick_labels.append('$\it{label}$'.format(label=df_sorted[ytlabel][i]))
+    else:
+        ytick_labels.append('{label}'.format(label=df_sorted[ytlabel][i]))
+
 # label the axes
 ax.invert_yaxis()
-plt.yticks(y, df_sorted[ytlabel])
+#plt.yticks(y, df_sorted[ytlabel])
+plt.yticks(y, ytick_labels)
 plt.xlim(min_year, max_year)
-plt.ylabel(ylabel)
+plt.ylim(max(y)+1, min(y)-1)
+#plt.ylabel(ylabel)
 plt.xlabel(xlabel)
 plt.title(title)
-plt.legend(loc = 'lower left')
-#ax2 = ax1.twinx()
-#plt.ylim(ax1.get_ylim())
-#ax2.yaxis.tick_right()
+
+# custom build the legend
+legend = list(unique)
+legend.append('{style}'.format(style=styles_titles[0]))
+legend.append('$\it{style}$'.format(style=styles_titles[1]))
+legend_colors = list(colors)
+legend_colors.append((0,0,0))
+legend_colors.append((0,0,0))
+legend_marker = list(np.repeat('s', ncolors))
+legend_marker.append('')
+legend_marker.append('')
+proxies = []
+for i in range(len(legend)):
+    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
+    
+plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
+    markerscale = 2)
+#plt.legend(loc = 'lower left')
+
+# set the labels on the right
+ax2 = ax1.twinx()
+plt.ylim(ax1.get_ylim())
+ax2.yaxis.tick_right()
+plt.yticks([y[:ysplit].mean(), y[ysplit:].mean()], ['Passive sensors', 'Active sensors'], rotation=270,
+    horizontalalignment='left', verticalalignment='center')
+ax2.tick_params(length=0)
 #plt.yticks(y, df_sorted['EBV Authors'])
 #plt.ylabel("Reference")
+
+# set the figure size explicitly to fit full page width
+xwidth = 6.811 # 173 millimeters is full width limit
+ywidth = xwidth * 0.8
+scaler = 1.8
+fig = plt.gcf()
+fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
+
+# save the output file
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.tif',
+    dpi=600/scaler)
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.png',
+dpi=600/scaler)
