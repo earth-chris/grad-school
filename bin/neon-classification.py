@@ -13,6 +13,7 @@ import seaborn as sns
 from sklearn import svm
 from sklearn import metrics
 from sklearn import ensemble
+from sklearn import multiclass
 from sklearn import preprocessing
 from sklearn import model_selection
 from sklearn.decomposition import PCA
@@ -43,6 +44,7 @@ reduce_dims = True
 tune_params = False
 tune_ovo = False
 use_transformed = True
+auto_multiclass = True
 
 ##########
 # 
@@ -216,153 +218,219 @@ else:
 if verbose:
     print("[ STATUS ]: Beginning one-vs-all classification")
 
-# loop through and classify as each species vs all    
-for i in range(n_species):
-    if verbose:
-        print("[ STATUS ]: Classifying species: {}".format(sp_unique[i]))
-    ind_target = np.where(spid == i)
-    ind_backgr = np.where(spid != i)
-    
-    #n_per_class = np.int(np.ceil(len(ind_target[0]) / (n_species - 1)))
-    
-    # standardize the minimum number of samples per class to pull
-    #n_backgr = min(min_class, n_per_class) * (n_species - 1)
-    #n_target = min(len(ind_target[0]), (n_species - 1) * n_backgr)
-    
-    # create the arrays to store the randomly sampled classes
-    #tuning_x = np.zeros((n_backgr + n_target, n_components))
-    #tuning_y = np.zeros(n_backgr + n_target, dtype = np.uint8)
-    #tuning_y[n_backgr:] = 1
-    
-    ###
-    # NEW SAMPLING - WEIGHTED CLASSES
-    ###
-    #n_target = len(ind_target[0])
-    #n_backgr = len(ind_backgr[0])
-    #class_weight = float(n_backgr) / n_target
-    #sample_weight = np.ones(n_target+n_backgr)
-    #sample_weight[ind_target[0]] = class_weight
-    #fit_params = {'sample_weight': sample_weight}
-    
-    tuning_y = np.zeros(n_backgr+n_target, dtype=np.uint8)
-    tuning_y[ind_target[0]] = 1
-    tuning_x = target_data
-    
-    ###
-    # OK, NEW SAMPLING AGAIN - set a fixed number per class 
-    ###
+if auto_multiclass:
     n_per_class = 200
     class_weight = n_species
     tuning_y = np.zeros(n_species * n_per_class, dtype=np.uint8)
     tuning_x = np.zeros((n_species * n_per_class, n_components))
-    tuning_y[-n_per_class:] = 1
-    
     sample_weight = np.ones(n_species * n_per_class)
-    sample_weight[-n_per_class:] = class_weight
-    fit_params = {'sample_weight': sample_weight}
     
-    # loop through each non-target species, randomly sample, and add to the tuning set
-    non_target_species = range(n_species)
-    non_target_species.pop(i)
-    for j in range(len(non_target_species)):
-        
-        # get indices for the class, and pull a random subset of those
-        ind_class = np.where(spid == non_target_species[j])
-    #    ind_rnd = ind_class[0][np.random.choice(len(ind_class[0]), n_per_class)]
-    #    tuning_x[j * n_per_class:(j + 1) * n_per_class] = target_data[ind_rnd]
+    for i in range(n_species):
+        ind_class = np.where(spid == i)
         ind_rnd = np.random.randint(0, high=ind_class[0].shape[0], size=n_per_class)
-        tuning_x[j * n_per_class:(j + 1) * n_per_class] = target_data[ind_rnd]
+        tuning_x[i * n_per_class:(i+1) * n_per_class] = target_data[ind_class[0][ind_rnd]]
+        tuning_y[i * n_per_class:(i+1) * n_per_class] = i
     
-    # then, randomly sample the target class
-    #tuning_x[n_backgr:] = target_data[ind_target[0][np.random.choice(len(ind_target[0]), n_target)]]
-    ind_rnd = np.random.randint(0, high=ind_target[0].shape[0], size=n_per_class)
-    tuning_x[-n_per_class:] = target_data[ind_rnd]
+    scoring = 'accuracy'
     
-    # now we should have populated tuning x/y variables. now tune the models for each species
-    #  using multiple classifiers
+    # gbc first
+    gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=200,
+        learning_rate=0.01)
+    ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
+    ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
+    cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y, scoring=scoring)
+    cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y, scoring=scoring)
+    mean_gbc.append(cv_score_gbc_ovr.mean())
+    mean_gbc.append(cv_score_gbc_ovo.mean())
+    stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
+    stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
     
-    if tune_params:
-        print("[ STATUS ]: Tuning model parameters")
-        # first, SVC
-        model_tuning = aei.model.tune(tuning_x, tuning_y)
-        model_tuning.SVC(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
-        best_params_svc.append(model_tuning.best_params)
-        best_score_svc.append(model_tuning.best_score)
+    
+    #rfc = ensemble.RandomForestClassifier(**best_params_rfc[i])
+    rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=200)
+    ovr_rfc = multiclass.OneVsRestClassifier(rfc, n_jobs=-2)
+    ovo_rfc = multiclass.OneVsOneClassifier(rfc, n_jobs=-2)
+    cv_score_rfc_ovr = model_selection.cross_val_score(ovr_rfc, tuning_x, tuning_y, scoring=scoring)
+    cv_score_rfc_ovo = model_selection.cross_val_score(ovo_rfc, tuning_x, tuning_y, scoring=scoring)
+    mean_rfc.append(cv_score_rfc_ovr.mean())
+    mean_rfc.append(cv_score_rfc_ovo.mean())
+    stdv_rfc.append(cv_score_rfc_ovr.std() * 2)
+    stdv_rfc.append(cv_score_rfc_ovo.std() * 2)
+    
+    # fit the final models
+    ovr_gbc.fit(tuning_x, tuning_y)
+    ovo_gbc.fit(tuning_x, tuning_y)
+    ovr_rfc.fit(tuning_x, tuning_y)
+    ovo_rfc.fit(tuning_x, tuning_y)
+    
+    # then, save 'em
+    gbc_file = path_sep.join([path_ova, 'Multiclass-GBC.pickle'])
+    with open(gbc_file, 'wb') as f:
+        pickle.dump(ovr_gbc, f)
         
-        # second, gradient boosting
-        model_tuning.param_grid = None
-        model_tuning.GradientBoostClassifier(scoring='f1_weighted', fit_params=fit_params)
-        best_params_gbc.append(model_tuning.best_params)
-        best_score_gbc.append(model_tuning.best_score)
+    gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC.pickle'])
+    with open(gbc_file, 'wb') as f:
+        pickle.dump(ovo_gbc, f)
+       
+    rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
+    with open(rfc_file, 'wb') as f:
+        pickle.dump(ovr_rfc, f)
+        
+    rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC.pickle'])
+    with open(rfc_file, 'wb') as f:
+        pickle.dump(ovo_rfc, f)
+    
+else:
+    # loop through and classify as each species vs all    
+    for i in range(n_species):
+        if verbose:
+            print("[ STATUS ]: Classifying species: {}".format(sp_unique[i]))
+        ind_target = np.where(spid == i)
+        ind_backgr = np.where(spid != i)
+        
+        #n_per_class = np.int(np.ceil(len(ind_target[0]) / (n_species - 1)))
+        
+        # standardize the minimum number of samples per class to pull
+        #n_backgr = min(min_class, n_per_class) * (n_species - 1)
+        #n_target = min(len(ind_target[0]), (n_species - 1) * n_backgr)
+        
+        # create the arrays to store the randomly sampled classes
+        #tuning_x = np.zeros((n_backgr + n_target, n_components))
+        #tuning_y = np.zeros(n_backgr + n_target, dtype = np.uint8)
+        #tuning_y[n_backgr:] = 1
+        
+        ###
+        # NEW SAMPLING - WEIGHTED CLASSES
+        ###
+        #n_target = len(ind_target[0])
+        #n_backgr = len(ind_backgr[0])
+        #class_weight = float(n_backgr) / n_target
+        #sample_weight = np.ones(n_target+n_backgr)
+        #sample_weight[ind_target[0]] = class_weight
+        #fit_params = {'sample_weight': sample_weight}
+        
+        #tuning_y = np.zeros(n_backgr+n_target, dtype=np.uint8)
+        #tuning_y[ind_target[0]] = 1
+        #tuning_x = target_data
+        
+        ###
+        # OK, NEW SAMPLING AGAIN - set a fixed number per class 
+        ###
+        n_per_class = 400
+        class_weight = n_species
+        tuning_y = np.zeros(n_species * n_per_class, dtype=np.uint8)
+        tuning_x = np.zeros((n_species * n_per_class, n_components))
+        tuning_y[-n_per_class:] = 1
+        
+        sample_weight = np.ones(n_species * n_per_class)
+        sample_weight[-n_per_class:] = class_weight
+        fit_params = {'sample_weight': sample_weight}
+        
+        # loop through each non-target species, randomly sample, and add to the tuning set
+        non_target_species = range(n_species)
+        non_target_species.pop(i)
+        for j in range(len(non_target_species)):
+            
+            # get indices for the class, and pull a random subset of those
+            ind_class = np.where(spid == non_target_species[j])
+        #    ind_rnd = ind_class[0][np.random.choice(len(ind_class[0]), n_per_class)]
+        #    tuning_x[j * n_per_class:(j + 1) * n_per_class] = target_data[ind_rnd]
+            ind_rnd = np.random.randint(0, high=ind_class[0].shape[0], size=n_per_class)
+            tuning_x[j * n_per_class:(j + 1) * n_per_class] = target_data[ind_class[0][ind_rnd]]
+        
+        # then, randomly sample the target class
+        #tuning_x[n_backgr:] = target_data[ind_target[0][np.random.choice(len(ind_target[0]), n_target)]]
+        ind_rnd = np.random.randint(0, high=ind_target[0].shape[0], size=n_per_class)
+        tuning_x[-n_per_class:] = target_data[ind_target[0][ind_rnd]]
+        
+        # now we should have populated tuning x/y variables. now tune the models for each species
+        #  using multiple classifiers
+        
+        if tune_params:
+            print("[ STATUS ]: Tuning model parameters")
+            # first, SVC
+            model_tuning = aei.model.tune(tuning_x, tuning_y)
+           # model_tuning.SVC(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
+            model_tuning.SVC(scoring='f1_weighted')
+            best_params_svc.append(model_tuning.best_params)
+            best_score_svc.append(model_tuning.best_score)
+            
+            # second, gradient boosting
+            model_tuning.param_grid = None
+            #model_tuning.GradientBoostClassifier(scoring='f1_weighted', fit_params=fit_params)
+            model_tuning.GradientBoostClassifier(scoring='f1_weighted')
+            best_params_gbc.append(model_tuning.best_params)
+            best_score_gbc.append(model_tuning.best_score)
+            
+            # finally, random forest
+            model_tuning.param_grid = None
+            #model_tuning.RandomForestClassifier(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
+            model_tuning.RandomForestClassifier(scoring='f1_weighted')
+            best_params_rfc.append(model_tuning.best_params)
+            best_score_rfc.append(model_tuning.best_score)
+            
+            # save the outputs
+            with open(svc_pca_outputs, 'wb') as f:
+                pickle.dump(best_params_svc, f)
+            with open(gbc_pca_outputs, 'wb') as f:
+                pickle.dump(best_params_gbc, f)
+            with open(rfc_pca_outputs, 'wb') as f:
+                pickle.dump(best_params_rfc, f)
+                    
+        else:
+            with open(svc_refl_outputs, 'rb') as f:
+                best_params_svc.append(pickle.load(f))
+            with open(gbc_refl_outputs, 'rb') as f:
+                best_params_gbc.append(pickle.load(f))
+            with open(rfc_refl_outputs, 'rb') as f:
+                best_params_rfc.append(pickle.load(f))
+                    
+        # ok, now that we have the best parameters for each model type, let's perform some
+        #  cross validation to assess model performance
+        scoring = 'f1_weighted'
+        
+        if verbose:
+            print("[ STATUS ]: Performing cross validation")
+        
+        # first, svm
+        svc = svm.SVC(class_weight={0: 1, 1: class_weight}, **best_params_svc[i])
+        cv_score_svc = model_selection.cross_val_score(svc, tuning_x, tuning_y, scoring = scoring)
+        mean_svc.append(cv_score_svc.mean())
+        stdv_svc.append(cv_score_svc.std() * 2)
+        
+        # next, gradient boosting
+        gbc = ensemble.GradientBoostingClassifier(**best_params_gbc[i])
+        cv_score_gbc = model_selection.cross_val_score(gbc, tuning_x, tuning_y, scoring = scoring)
+        mean_gbc.append(cv_score_gbc.mean())
+        stdv_gbc.append(cv_score_gbc.std() * 2)
         
         # finally, random forest
-        model_tuning.param_grid = None
-        model_tuning.RandomForestClassifier(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
-        best_params_rfc.append(model_tuning.best_params)
-        best_score_rfc.append(model_tuning.best_score)
+        rfc = ensemble.RandomForestClassifier(class_weight={0: 1, 1: class_weight}, **best_params_rfc[i])
+        cv_score_rfc = model_selection.cross_val_score(rfc, tuning_x, tuning_y, scoring = scoring)
+        mean_rfc.append(cv_score_rfc.mean())
+        stdv_rfc.append(cv_score_rfc.std() * 2)
         
-        # save the outputs
-        with open(svc_pca_outputs, 'wb') as f:
-            pickle.dump(best_params_svc, f)
-        with open(gbc_pca_outputs, 'wb') as f:
-            pickle.dump(best_params_gbc, f)
-        with open(rfc_pca_outputs, 'wb') as f:
-            pickle.dump(best_params_rfc, f)
-                
-    else:
-        with open(svc_refl_outputs, 'rb') as f:
-            best_params_svc = pickle.load(f)
-        with open(gbc_refl_outputs, 'rb') as f:
-            best_params_gbc = pickle.load(f)
-        with open(rfc_refl_outputs, 'rb') as f:
-            best_params_rfc = pickle.load(f)
-                
-    # ok, now that we have the best parameters for each model type, let's perform some
-    #  cross validation to assess model performance
-    scoring = 'f1_weighted'
-    
-    if verbose:
-        print("[ STATUS ]: Performing cross validation")
-    
-    # first, svm
-    svc = svm.SVC(class_weight={0: 1, 1: class_weight}, **best_params_svc[i])
-    cv_score_svc = model_selection.cross_val_score(svc, tuning_x, tuning_y, scoring = scoring)
-    mean_svc.append(cv_score_svc.mean())
-    stdv_svc.append(cv_score_svc.std() * 2)
-    
-    # next, gradient boosting
-    gbc = ensemble.GradientBoostingClassifier(**best_params_gbc[i])
-    cv_score_gbc = model_selection.cross_val_score(gbc, tuning_x, tuning_y, scoring = scoring)
-    mean_gbc.append(cv_score_gbc.mean())
-    stdv_gbc.append(cv_score_gbc.std() * 2)
-    
-    # finally, random forest
-    rfc = ensemble.RandomForestClassifier(class_weight={0: 1, 1: class_weight}, **best_params_rfc[i])
-    cv_score_rfc = model_selection.cross_val_score(rfc, tuning_x, tuning_y, scoring = scoring)
-    mean_rfc.append(cv_score_rfc.mean())
-    stdv_rfc.append(cv_score_rfc.std() * 2)
-    
-    if verbose:
-        print("[ STATUS ]: Fitting and saving final models")
-    
-    # train and save the final models using all data
-    svc.fit(tuning_x, tuning_y)
-    svc_file = path_sep.join([path_ova, sp_unique[i] + ' SVC.pickle'])
-    with open(svc_file, 'wb') as f:
-        pickle.dump(svc, f)
-    
-    gbc.fit(tuning_x, tuning_y, sample_weight=sample_weight)
-    gbc_file = path_sep.join([path_ova, sp_unique[i] + ' GBC.pickle'])
-    with open(gbc_file, 'wb') as f:
-        pickle.dump(gbc, f)
+        if verbose:
+            print("[ STATUS ]: Fitting and saving final models")
         
-    rfc.fit(tuning_x, tuning_y)
-    rfc_file = path_sep.join([path_ova, sp_unique[i] + ' RFC.pickle'])
-    with open(rfc_file, 'wb') as f:
-        pickle.dump(rfc, f)
+        # train and save the final models using all data
+        svc.fit(tuning_x, tuning_y)
+        svc_file = path_sep.join([path_ova, sp_unique[i] + ' SVC.pickle'])
+        with open(svc_file, 'wb') as f:
+            pickle.dump(svc, f)
         
-    if verbose:
-        print("[ STATUS ]: ----------")
+        gbc.fit(tuning_x, tuning_y, sample_weight=sample_weight)
+        gbc_file = path_sep.join([path_ova, sp_unique[i] + ' GBC.pickle'])
+        with open(gbc_file, 'wb') as f:
+            pickle.dump(gbc, f)
+            
+        rfc.fit(tuning_x, tuning_y)
+        rfc_file = path_sep.join([path_ova, sp_unique[i] + ' RFC.pickle'])
+        with open(rfc_file, 'wb') as f:
+            pickle.dump(rfc, f)
+            
+        if verbose:
+            print("[ STATUS ]: ----------")
         
 # ok, now that we have performed the cross validation for each model, plot out the cv results
 if plot_ova_cv:
@@ -466,6 +534,7 @@ for i in range(n_species):
             # first, SVC
             model_tuning = aei.model.tune(tuning_x, tuning_y)
             model_tuning.SVC(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
+            model_tuning.SVC(scoring='f1_weighted')
             best_params_svc[sp_pair] = model_tuning.best_params
             best_score_svc[i, j] = model_tuning.best_score
             with open(svc_pca_outputs, 'wb') as f:
@@ -482,6 +551,7 @@ for i in range(n_species):
             # finally, random forest
             model_tuning.param_grid = None
             model_tuning.RandomForestClassifier(scoring='f1_weighted', class_weight={0: 1, 1: class_weight})
+            model_tuning.RandomForestClassifier(scoring='f1_weighted')
             best_params_rfc[sp_pair] = model_tuning.best_params
             best_score_rfc[i, j] = model_tuning.best_score
             with open(rfc_pca_outputs, 'wb') as f:
