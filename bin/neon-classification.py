@@ -14,6 +14,7 @@ from sklearn import svm
 from sklearn import metrics
 from sklearn import ensemble
 from sklearn import multiclass
+from sklearn import calibration
 from sklearn import preprocessing
 from sklearn import model_selection
 from sklearn.decomposition import PCA
@@ -45,6 +46,8 @@ tune_params = False
 tune_ovo = False
 use_transformed = True
 auto_multiclass = True
+auto_species = True
+auto_genus = True
 
 ##########
 # 
@@ -85,6 +88,17 @@ for i in range(n_species):
     for j in range(len(cr_unique)):
         cr_ind = np.where(crid == cr_unique[j])
         spid[cr_ind[0]] = i # now spid is labeled 0:n_species-1 to correspond with the sp_unique list
+
+# do the same for genus ID
+geid = np.zeros(len(crid), dtype=np.int)
+ge_unique = list(train_spp['genus_id'].unique())
+ge_unique.sort()
+n_genera = len(ge_unique)
+for i in range(n_genera):
+    cr_unique = train_spp[train_spp['genus_id'] == ge_unique[i]]['crown_id'].unique()
+    for j in range(len(cr_unique)):
+        cr_ind = np.where(crid == cr_unique[j])
+        geid[cr_ind[0]] = i # now geid is labeled 0:n_genera-1 to correspond with the ge_unique list
 
 # set the unique colors
 sp_colors = aei.color.color_blind(n_species)
@@ -141,6 +155,7 @@ if remove_outliers:
     refl[:, bb] = 0.
     crid = crid[mask]
     spid = spid[mask]
+    geid = geid[mask]
     hght = hght[mask]
 
 #####
@@ -219,9 +234,10 @@ if verbose:
     print("[ STATUS ]: Beginning one-vs-all classification")
 
 if auto_multiclass:
-    n_per_class = 200
+    n_per_class = 400
     class_weight = n_species
     tuning_y = np.zeros(n_species * n_per_class, dtype=np.uint8)
+    tuning_y_ge = np.zeros(n_species * n_per_class, dtype=np.uint8)
     tuning_x = np.zeros((n_species * n_per_class, n_components))
     sample_weight = np.ones(n_species * n_per_class)
     
@@ -230,56 +246,187 @@ if auto_multiclass:
         ind_rnd = np.random.randint(0, high=ind_class[0].shape[0], size=n_per_class)
         tuning_x[i * n_per_class:(i+1) * n_per_class] = target_data[ind_class[0][ind_rnd]]
         tuning_y[i * n_per_class:(i+1) * n_per_class] = i
+        tuning_y_ge[i * n_per_class:(i+1) * n_per_class] = geid[ind_class[0]].min()
     
     scoring = 'accuracy'
     
-    # gbc first
-    gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=200,
-        learning_rate=0.01)
-    ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
-    ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
-    cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y, scoring=scoring)
-    cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y, scoring=scoring)
-    mean_gbc.append(cv_score_gbc_ovr.mean())
-    mean_gbc.append(cv_score_gbc_ovo.mean())
-    stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
-    stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
+    # create the train/test splits
+    xtrain, xtest, ytrain, ytest = model_selection.train_test_split(
+        tuning_x, tuning_y, test_size=0.5, stratify=tuning_y)
     
+    # and the calibration/test results
+    xcalib, xtest, ycalib, ytest = model_selection.train_test_split(
+        xtest, ytest, test_size=0.5, stratify=ytest)
     
-    #rfc = ensemble.RandomForestClassifier(**best_params_rfc[i])
-    rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=200)
-    ovr_rfc = multiclass.OneVsRestClassifier(rfc, n_jobs=-2)
-    ovo_rfc = multiclass.OneVsOneClassifier(rfc, n_jobs=-2)
-    cv_score_rfc_ovr = model_selection.cross_val_score(ovr_rfc, tuning_x, tuning_y, scoring=scoring)
-    cv_score_rfc_ovo = model_selection.cross_val_score(ovo_rfc, tuning_x, tuning_y, scoring=scoring)
-    mean_rfc.append(cv_score_rfc_ovr.mean())
-    mean_rfc.append(cv_score_rfc_ovo.mean())
-    stdv_rfc.append(cv_score_rfc_ovr.std() * 2)
-    stdv_rfc.append(cv_score_rfc_ovo.std() * 2)
-    
-    # fit the final models
-    ovr_gbc.fit(tuning_x, tuning_y)
-    ovo_gbc.fit(tuning_x, tuning_y)
-    ovr_rfc.fit(tuning_x, tuning_y)
-    ovo_rfc.fit(tuning_x, tuning_y)
-    
-    # then, save 'em
-    gbc_file = path_sep.join([path_ova, 'Multiclass-GBC.pickle'])
-    with open(gbc_file, 'wb') as f:
-        pickle.dump(ovr_gbc, f)
+    # classify at the species level
+    if auto_species:
+        # gbc first
+        model_tuning = aei.model.tune(tuning_x, tuning_y)
+        model_tuning.GradientBoostClassifier(scoring='f1_weighted')
+        gbc = ensemble.GradientBoostingClassifier(**model_tuning.best_params)
         
-    gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC.pickle'])
-    with open(gbc_file, 'wb') as f:
-        pickle.dump(ovo_gbc, f)
-       
-    rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
-    with open(rfc_file, 'wb') as f:
-        pickle.dump(ovr_rfc, f)
+        #gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=300,
+        #    learning_rate=0.01)
         
-    rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC.pickle'])
-    with open(rfc_file, 'wb') as f:
-        pickle.dump(ovo_rfc, f)
-    
+        gbc.fit(xtrain, ytrain)
+        ovr_gbc = calibration.CalibratedClassifierCV(gbc, method='sigmoid', cv='prefit')
+        ovr_gbc.fit(xcalib, ycalib)
+        prob_ovr = ovr_gbc.predict_proba(xtest)
+        prob_gbc = gbc.predict_proba(xtest)
+        pred_ovr = ovr_gbc.predict(xtest)
+        pred_gbc = gbc.predict(xtest)
+        
+        score_ovr = metrics.log_loss(ytest, prob_ovr)
+        score_gbc = metrics.log_loss(ytest, prob_gbc)
+        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
+        acc_gbc = metrics.accuracy_score(ytest, pred_gbc)
+        
+        #ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
+        #ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
+        #cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y, scoring=scoring)
+        #cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y, scoring=scoring)
+        #mean_gbc.append(cv_score_gbc_ovr.mean())
+        #mean_gbc.append(cv_score_gbc_ovo.mean())
+        #stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
+        #stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
+        
+        # now, random forest
+        model_tuning.param_grid = None
+        model_tuning.RandomForestClassifier(scoring='f1_weighted')
+        
+        rfc = ensemble.RandomForestClassifier(**model_tuning.best_params)
+        #rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=300)
+        
+        rfc.fit(xtrain, ytrain)
+        ovr_rfc = calibration.CalibratedClassifierCV(rfc, method='sigmoid', cv='prefit')
+        ovr_rfc.fit(xcalib, ycalib)
+        prob_ovr = ovr_rfc.predict_proba(xtest)
+        prob_rfc = rfc.predict_proba(xtest)
+        pred_ovr = ovr_rfc.predict(xtest)
+        pred_rfc = rfc.predict(xtest)
+        
+        score_ovr = metrics.log_loss(ytest, prob_ovr)
+        score_rfc = metrics.log_loss(ytest, prob_rfc)
+        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
+        acc_rfc = metrics.accuracy_score(ytest, pred_rfc)
+        
+        #ovr_rfc = multiclass.OneVsRestClassifier(rfc, n_jobs=-2)
+        #ovo_rfc = multiclass.OneVsOneClassifier(rfc, n_jobs=-2)
+        #cv_score_rfc_ovr = model_selection.cross_val_score(ovr_rfc, tuning_x, tuning_y, scoring=scoring)
+        #cv_score_rfc_ovo = model_selection.cross_val_score(ovo_rfc, tuning_x, tuning_y, scoring=scoring)
+        #mean_rfc.append(cv_score_rfc_ovr.mean())
+        #mean_rfc.append(cv_score_rfc_ovo.mean())
+        #stdv_rfc.append(cv_score_rfc_ovr.std() * 2)
+        #stdv_rfc.append(cv_score_rfc_ovo.std() * 2)
+        
+        # fit the final models
+        ovr_gbc.fit(tuning_x, tuning_y)
+        #ovo_gbc.fit(tuning_x, tuning_y)
+        ovr_rfc.fit(tuning_x, tuning_y)
+        #ovo_rfc.fit(tuning_x, tuning_y)
+        
+        # then, save 'em
+        gbc_file = path_sep.join([path_ova, 'Multiclass-GBC.pickle'])
+        with open(gbc_file, 'wb') as f:
+            pickle.dump(ovr_gbc, f)
+            
+        #gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC.pickle'])
+        #with open(gbc_file, 'wb') as f:
+        #    pickle.dump(ovo_gbc, f)
+           
+        rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
+        with open(rfc_file, 'wb') as f:
+            pickle.dump(ovr_rfc, f)
+            
+        #rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC.pickle'])
+        #with open(rfc_file, 'wb') as f:
+        #    pickle.dump(ovo_rfc, f)
+        
+    # ok, now genus level
+    if auto_genus:
+        
+        # create the train/test splits
+        xtrain, xtest, ytrain, ytest = model_selection.train_test_split(
+            tuning_x, tuning_y_ge, test_size=0.5, stratify=tuning_y_ge)
+        
+        # and the calibration/test results
+        xcalib, xtest, ycalib, ytest = model_selection.train_test_split(
+            xtest, ytest, test_size=0.5, stratify=ytest)
+        
+        # gbc first
+        gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=200,
+            learning_rate=0.01)
+        
+        gbc.fit(xtrain, ytrain)
+        ovr_gbc = calibration.CalibratedClassifierCV(gbc, method='sigmoid', cv='prefit')
+        ovr_gbc.fit(xcalib, ycalib)
+        prob_ovr = ovr_gbc.predict_proba(xtest)
+        prob_gbc = gbc.predict_proba(xtest)
+        pred_ovr = ovr_gbc.predict(xtest)
+        pred_gbc = gbc.predict(xtest)
+        
+        score_ovr = metrics.log_loss(ytest, prob_ovr)
+        score_gbc = metrics.log_loss(ytest, prob_gbc)
+        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
+        acc_gbc = metrics.accuracy_score(ytest, pred_gbc)
+        
+        #ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
+        #ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
+        #cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y_ge, scoring=scoring)
+        #cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y_ge, scoring=scoring)
+        #mean_gbc.append(cv_score_gbc_ovr.mean())
+        #mean_gbc.append(cv_score_gbc_ovo.mean())
+        #stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
+        #stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
+        
+        #rfc = ensemble.RandomForestClassifier(**best_params_rfc[i])
+        rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=200)
+        
+        rfc.fit(xtrain, ytrain)
+        ovr_rfc = calibration.CalibratedClassifierCV(rfc, method='sigmoid', cv='prefit')
+        ovr_rfc.fit(xcalib, ycalib)
+        prob_ovr = ovr_rfc.predict_proba(xtest)
+        prob_rfc = rfc.predict_proba(xtest)
+        pred_ovr = ovr_rfc.predict(xtest)
+        pred_rfc = rfc.predict(xtest)
+        
+        score_ovr = metrics.log_loss(ytest, prob_ovr)
+        score_gbc = metrics.log_loss(ytest, prob_rfc)
+        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
+        acc_gbc = metrics.accuracy_score(ytest, pred_rfc)
+        
+        #ovr_rfc = multiclass.OneVsRestClassifier(rfc, n_jobs=-2)
+        #ovo_rfc = multiclass.OneVsOneClassifier(rfc, n_jobs=-2)
+        #cv_score_rfc_ovr = model_selection.cross_val_score(ovr_rfc, tuning_x, tuning_y_ge, scoring=scoring)
+        #cv_score_rfc_ovo = model_selection.cross_val_score(ovo_rfc, tuning_x, tuning_y_ge, scoring=scoring)
+        #mean_rfc.append(cv_score_rfc_ovr.mean())
+        #mean_rfc.append(cv_score_rfc_ovo.mean())
+        #stdv_rfc.append(cv_score_rfc_ovr.std() * 2)
+        #stdv_rfc.append(cv_score_rfc_ovo.std() * 2)
+        
+        # fit the final models
+        ovr_gbc.fit(tuning_x, tuning_y_ge)
+        #ovo_gbc.fit(tuning_x, tuning_y_ge)
+        ovr_rfc.fit(tuning_x, tuning_y_ge)
+        #ovo_rfc.fit(tuning_x, tuning_y_ge)
+        
+        # then, save 'em
+        gbc_file = path_sep.join([path_ova, 'Multiclass-GBC-genus.pickle'])
+        with open(gbc_file, 'wb') as f:
+            pickle.dump(ovr_gbc, f)
+            
+        gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC-genus.pickle'])
+        with open(gbc_file, 'wb') as f:
+            pickle.dump(ovo_gbc, f)
+           
+        rfc_file = path_sep.join([path_ova, 'Multiclass-RFC-genus.pickle'])
+        with open(rfc_file, 'wb') as f:
+            pickle.dump(ovr_rfc, f)
+            
+        rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC-genus.pickle'])
+        with open(rfc_file, 'wb') as f:
+            pickle.dump(ovo_rfc, f)
+        
 else:
     # loop through and classify as each species vs all    
     for i in range(n_species):
@@ -648,6 +795,7 @@ output_vars['gb'] = gb
 output_vars['path_ovo'] = path_ovo
 output_vars['path_ova'] = path_ova
 output_vars['sp_unique'] = sp_unique
+output_vars['ge_unique'] = ge_unique
 
 output_var_file = path_sep.join([path_outputs, 'misc_variables.pickle'])
 with open(output_var_file, 'wb') as f:
