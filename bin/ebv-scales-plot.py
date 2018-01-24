@@ -36,7 +36,7 @@ xdata = 'Plot revisit time'
 xlabel = "low  --------------->  high\nFrequency (days between revisit)"
 ydata = 'Plot resolution'
 ylabel = "Grain (m)\ncoarse  --------------->  fine"
-title = "Spatiotemporal Scales of\nBiodiversity Measurements from Earth Observations"
+title = "Spatiotemporal scales of\nbiodiversity measurements from Earth observations"
 
 # set variable to color by
 colorby = 'EBV Class'
@@ -87,7 +87,7 @@ for i in range(ncolors):
         #else:
         #    c = cols[i]
         plt.scatter(x = fc[xdata], y = fc[ydata], c = c, 
-            alpha = 0.9, label = unique[i], s = 195, marker = markers[j],
+            alpha = 0.9, label = unique[i], s = 205, marker = markers[j],
             edgecolor='black')#, linewidth='1')
     
 # add titles/labels        
@@ -123,7 +123,7 @@ for i in range(len(df)):
         arrowprops = dict(arrowstyle = '-', color = 'black'),
         #textcoords = 'offset points', ha = 'left', va = 'bottom',
         textcoords = 'offset points', ha = df['ha'][i], va = df['va'][i],
-        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.15),
+        bbox = dict(boxstyle = 'round, pad=0.2', fc = 'black', alpha = 0.10),
         fontstyle = df['Style'][i])
 
 # custom build the legend
@@ -171,6 +171,7 @@ plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-g
     dpi=600/scaler)
 plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.png',
 dpi=600/scaler)
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.svg')
     
 plt.close()
 
@@ -187,7 +188,7 @@ ydata = 'Launch Year'
 wdata = 'Decomission Year'
 ylabel = "Earth Observation Mission"
 ytlabel = 'Sensor Name'
-title = 'Timeline of Earth Observations of Biodiversity'
+title = 'Timeline of Earth observations of biodiversity'
 
 # set variable to color by
 colorby = 'EBV Class'
@@ -318,3 +319,4 @@ plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-a
     dpi=600/scaler)
 plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.png',
 dpi=600/scaler)
+plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.svg')

@@ -27,7 +27,7 @@ fig_base = "Mesoamerica_pca_1km_"
 ma_file = base + 'data/mesoamerica_predictor_data.csv'
 
 # set file for predicting distributions
-pred_file = "/home/cba/Downloads/mesoamerica/CCB-LC-Mesoamerica-stacked-0000080640-0000107520_southern.tif"
+pred_file = "/home/cba/Downloads/mesoamerica/CCB-LC-Mesoamerica-stacked-0000080640-0000107520-100m.tif"
 
 # set this to false to forego plotting/predicting on images
 build_plots = False
@@ -43,21 +43,13 @@ scaler = preprocessing.MinMaxScaler()
 pc_scaler = preprocessing.MinMaxScaler()
 
 # set whether to perform data rotation
-reduce_data = True
+reduce_data = False
 write_pcs = False
 n_components = 2 # can be an int or None
 reducer = decomposition.PCA(n_components = n_components, whiten = True)
 
 # set the color palette
 palette = aei.color.color_blind
-
-# set the models to apply
-models = ["DecisionTree", "SVM", "MaxEnt", "AdaBoosting",
-    "GradientBoosting", "RandomForest"]
-output_models = []
-for model in models:
-    output_models.append("{base}Mesoamerica-prediction-{model}".format(
-        base = base + 'scratch/', model = model))
 
 #####
 # read, subset, and transform data as necessary
@@ -130,7 +122,7 @@ if build_plots:
         # plot the distributions
         plot = aei.plot.density_dist(vec, label = labels, 
             xlabel = band_names[i], aei_color = palette, 
-            title = "{}\nDensity distributions".format(band_names[i]))
+            title = "Mesoamerica {}\nDensity distributions".format(band_names[i]))
         
         # save the figure
         plot.savefig(fig_name, dpi = 200)
@@ -261,11 +253,28 @@ raa = np.random.choice(nbk, naa)
 bkae = bk.iloc[rae].append(ae)
 bkaa = bk.iloc[raa].append(aa)
 
+# EDIT TO THE ABOVE
+# do it instead with the background class coming from the other vectors
+#  instead of from the geographic random sampling
+#  and we'll oversample albopictus in predicting aegypti,
+#  then undersample aegypti in predicting albopictus
+aa['class'] = 0
+rae = np.random.choice(naa, nae)
+raa = np.random.choice(nae, naa)
+bkae = aa.iloc[rae].append(ae)
+bkaa = ae.iloc[raa].append(aa)
+
 # convert to numpy arrays, and get y and xdata for each species
 yae = np.array(bkae.pop('class'))
 xae = np.array(bkae)
 yaa = np.array(bkaa.pop('class'))
 xaa = np.array(bkaa)
+
+# swap 0's and 1's for aegypti/albo in the albo predictions
+#yaa_aa = yaa == 0
+#yaa_ae = yaa == 1
+#yaa[yaa_aa] = 1
+#yaa[yaa_ae] = 0
 
 # split into train/test groups
 xae_train, xae_test, yae_train, yae_test = train_test_split(
@@ -274,7 +283,8 @@ xaa_train, xaa_test, yaa_train, yaa_test = train_test_split(
     xaa, yaa, test_size = 0.25)
 
 # set up arrays to store performance metrics from each model
-nm = len(mods)
+models = ["MaxEnt", "GradientBoosting"]
+nm = len(models)
 train_precision = np.zeros((nm,2))
 train_recall = np.zeros((nm,2))
 train_fscore = np.zeros((nm,2))
@@ -293,12 +303,22 @@ model_prediction_aa = np.zeros((nm, len(yaa_test)))
 ae_tuner = aei.model.tune(xae_train, yae_train, scoring = scoring)
 aa_tuner = aei.model.tune(xaa_train, yaa_train, scoring = scoring)
 
-ae_model = [ae_tuner.DecisionTreeClassifier, ae_tuner.SVC, 
-    ae_tuner.LogisticRegression, ae_tuner.AdaBoostClassifier, 
-    ae_tuner.GradientBoostClassifier, ae_tuner.RandomForestClassifier]
-aa_model = [aa_tuner.DecisionTreeClassifier, aa_tuner.SVC, 
-    aa_tuner.LogisticRegression, aa_tuner.AdaBoostClassifier, 
-    aa_tuner.GradientBoostClassifier, aa_tuner.RandomForestClassifier]
+#ae_model = [ae_tuner.DecisionTreeClassifier, ae_tuner.SVC, 
+#    ae_tuner.LogisticRegression, ae_tuner.AdaBoostClassifier, 
+#    ae_tuner.GradientBoostClassifier, ae_tuner.RandomForestClassifier]
+#aa_model = [aa_tuner.DecisionTreeClassifier, aa_tuner.SVC, 
+#    aa_tuner.LogisticRegression, aa_tuner.AdaBoostClassifier, 
+#    aa_tuner.GradientBoostClassifier, aa_tuner.RandomForestClassifier]
+    
+ae_model = [ae_tuner.LogisticRegression, ae_tuner.GradientBoostClassifier]
+aa_model = [aa_tuner.LogisticRegression, aa_tuner.GradientBoostClassifier]
+
+# set the models to apply
+models = ["MaxEnt", "GradientBoosting"]
+output_models = []
+for model in models:
+    output_models.append("{base}Mesoamerica-prediction-{model}".format(
+        base = base + 'scratch/', model = model))
 
 # iterate over each model
 for i in range(len(models)):
