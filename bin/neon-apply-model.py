@@ -26,7 +26,7 @@ path_train_spp = path_sep.join([path_base, 'Task3', 'GroundData', 'species_id_tr
 path_test_hyp = path_sep.join([path_base, 'Task3', 'GroundData', 'hyper_bands_test.csv'])
 
 # select the classifier to use
-classifier = 'SVC'
+classifier = 'RFC'
 color_options = {'RFC': 'Orange', 'GBC': 'Blue', 'SVC': 'Green'}
 color = color_options[classifier]
 

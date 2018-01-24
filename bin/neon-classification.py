@@ -293,7 +293,6 @@ if auto_multiclass:
         # now, random forest
         model_tuning.param_grid = None
         model_tuning.RandomForestClassifier(scoring='f1_weighted')
-        
         rfc = ensemble.RandomForestClassifier(**model_tuning.best_params)
         #rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=300)
         
@@ -354,8 +353,11 @@ if auto_multiclass:
             xtest, ytest, test_size=0.5, stratify=ytest)
         
         # gbc first
-        gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=200,
-            learning_rate=0.01)
+        model_tuning = aei.model.tune(tuning_x, tuning_y_ge)
+        model_tuning.GradientBoostClassifier(scoring='f1_weighted')
+        gbc = ensemble.GradientBoostingClassifier(**model_tuning.best_params)
+        #gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=200,
+        #    learning_rate=0.01)
         
         gbc.fit(xtrain, ytrain)
         ovr_gbc = calibration.CalibratedClassifierCV(gbc, method='sigmoid', cv='prefit')
@@ -379,8 +381,11 @@ if auto_multiclass:
         #stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
         #stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
         
+        model_tuning.param_grid = None
+        model_tuning.RandomForestClassifier(scoring='f1_weighted')
+        rfc = ensemble.RandomForestClassifier(**model_tuning.best_params)
         #rfc = ensemble.RandomForestClassifier(**best_params_rfc[i])
-        rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=200)
+        #rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=200)
         
         rfc.fit(xtrain, ytrain)
         ovr_rfc = calibration.CalibratedClassifierCV(rfc, method='sigmoid', cv='prefit')
@@ -415,17 +420,17 @@ if auto_multiclass:
         with open(gbc_file, 'wb') as f:
             pickle.dump(ovr_gbc, f)
             
-        gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC-genus.pickle'])
-        with open(gbc_file, 'wb') as f:
-            pickle.dump(ovo_gbc, f)
+        #gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC-genus.pickle'])
+        #with open(gbc_file, 'wb') as f:
+        #    pickle.dump(ovo_gbc, f)
            
         rfc_file = path_sep.join([path_ova, 'Multiclass-RFC-genus.pickle'])
         with open(rfc_file, 'wb') as f:
             pickle.dump(ovr_rfc, f)
             
-        rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC-genus.pickle'])
-        with open(rfc_file, 'wb') as f:
-            pickle.dump(ovo_rfc, f)
+        #rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC-genus.pickle'])
+        #with open(rfc_file, 'wb') as f:
+        #    pickle.dump(ovo_rfc, f)
         
 else:
     # loop through and classify as each species vs all    
