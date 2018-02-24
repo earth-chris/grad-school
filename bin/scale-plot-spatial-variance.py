@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 %matplotlib tk
 
 # set the working directories
-base = '/home/salo/Downloads/scale-conceptual/'
+base = '/home/cba/Downloads/scale-conceptual/'
 plots = base + 'plots/'
 tch_file = base + 'marin_tch_byte.tif'
 gd_file = base + 'marin_tch_mask.tif'
@@ -19,7 +19,8 @@ rnd_data = base + 'random-sampling-data.pck'
 calc_rs = False
 
 # set the number of resolutions to assess
-res = [20, 30, 50, 100, 250, 500, 1000, 1250, 1500, 1750, 2000]
+#res = [20, 30, 50, 100, 250, 500, 1000, 1250, 1500, 1750, 2000]
+res = [20, 30, 50, 100, 250, 500, 1000]
 
 # set the number of pixels to sample 
 fullres = 2 * 2
@@ -103,8 +104,16 @@ bg_std = np.nanstd(bg_var_loc[0], axis=1) # stdev of between-grain variance
 
 # plot these results
 cols = aei.color.color_blind(5)
-fill_alpha = 0.4
+col = '#E3C16D'
+#col=cols[4]
+fill_alpha = 0.7
 plt.figure(figsize=(4,3), dpi=200)
+
+# plot the standard deviations for each
+plt.fill_between(res, wg_mean_all-wg_std, wg_mean_all+wg_std, 
+  color=col, alpha=fill_alpha, label='Bootstrapped\nstandard deviation')
+plt.fill_between(res, bg_mean-bg_std, bg_mean+bg_std, 
+  color=col, alpha=fill_alpha)
 
 # set the line plots
 plt.plot(res, wg_mean_all, color='black', linewidth=1.5, linestyle = '-',
@@ -112,14 +121,8 @@ plt.plot(res, wg_mean_all, color='black', linewidth=1.5, linestyle = '-',
 plt.plot(res, bg_mean, color='black', linewidth=1.5, linestyle = '--',
     label='Between-grain\nvariance')
 
-# plot the standard deviations for each
-plt.fill_between(res, wg_mean_all-wg_std, wg_mean_all+wg_std, 
-  color=cols[4], alpha=fill_alpha, label='Bootstrapped\nstandard deviation')
-plt.fill_between(res, bg_mean-bg_std, bg_mean+bg_std, 
-  color=cols[4], alpha=fill_alpha)
-
 # set the labels
-plt.xlabel('Grain size (m)')
+plt.xlabel('Log grain size (m)')
 plt.ylabel('Spatial\nvariance (m{})'.format(r'$^2$'))
 plt.title('Scale-dependence in\nspatial tree height patterns')
 
@@ -128,6 +131,7 @@ plt.title('Scale-dependence in\nspatial tree height patterns')
 #ax = plt.gca()
 #ax.loglog()
 plt.xscale('log')
+#plt.yscale('log')
 
 # replace the axis labels
 #yticks=(20, 40, 60, 80, 100)
@@ -137,8 +141,8 @@ plt.yticks(yticks, ['{}'.format(f) for f in yticks])
 plt.xticks(res, res)
 
 # set the custom legend
-lgd = plt.legend(loc='right', bbox_to_anchor=(1.65, 0.5), 
-    fancybox=True, shadow=True)
+lgd = plt.legend(loc='right', bbox_to_anchor=(1.7, 0.5), fancybox=True)#, 
+#    fancybox=True, shadow=True)
 
 # save the figure
 plt.tight_layout()

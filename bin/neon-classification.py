@@ -19,6 +19,7 @@ from sklearn import preprocessing
 from sklearn import model_selection
 from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
+%matplotlib tk
 
 # set the path to the ECODSEdataset files
 path_sep = '/'
@@ -38,7 +39,8 @@ path_ovo = path_sep.join([path_outputs, 'one_vs_one'])
 # set various options for saving / printing outputs
 verbose = True
 remove_outliers = True
-plot_spectra = False
+plot_spectra = True
+plot_all_sp = False
 plot_ova_cv = True
 plot_ovo_cv = True
 reduce_dims = True
@@ -169,24 +171,49 @@ for i in range(n_species):
     spec_mn = np.mean(refl[sp_ind[0], :], axis=0)
     spec_sd = np.std(refl[sp_ind[0], :], axis=0)
     
+    spec_mn[bb] = np.nan
+    
     # save the number of spectra for each class for later
     n_spec.append(len(sp_ind[0]))
     
     if plot_spectra:
         # plot the mean spectra with the stdev highlighted
+        plt.figure(figsize = (4,4), dpi=150)
         plt.plot(wv, spec_mn, linewidth = 2, c = 'black')
         plt.fill_between(wv, spec_mn-spec_sd, spec_mn+spec_sd, facecolor = sp_colors[i], alpha = 0.8)
         plt.ylim(0, 0.6)
         
         # label the data
-        plt.xlabel('Wavelength (um)')
+        plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
         plt.ylabel('Reflectance (%)')
-        plt.title('{}  |  n = {:d}'.format(sp_unique[i], len(sp_ind[0])))
+        plt.title('{}\nn = {:d}'.format(sp_unique[i], len(sp_ind[0])))
+        plt.tight_layout()
         
         # save the figure for later
         path_fig = path_sep.join([path_plots, sp_unique[i]])
         plt.savefig(path_fig + '.png', dpi = 300)
         plt.close()
+        
+    if plot_all_sp:
+        # create the figure params
+        if i == 0:
+            plt.figure(figsize = (5, 5), dpi=150)
+        
+        # plot the mean of each species in different colors
+        plt.plot(wv, spec_mn, linewidth=1.5, c=sp_colors[i], alpha=0.9, label=sp_unique[i])
+        
+if plot_all_sp:
+    # label the data
+    plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
+    plt.ylabel('Reflectance (%)')
+    plt.title('All species')
+    plt.legend()
+    plt.tight_layout()
+    
+    # save teh figure
+    path_fig = path_sep.join([path_plots, 'All-species-reflectance.png'])
+    plt.savefig(path_fig, dpi=300)
+    plt.close()
         
 #####
 # 4. Data dimensionality reduction and exploration
