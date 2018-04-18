@@ -5,7 +5,7 @@
 # package imports
 import aei
 import copy
-import plotly
+#import plotly
 import pickle
 import numpy as np
 import pandas as pd
@@ -20,6 +20,9 @@ from sklearn import model_selection
 from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
 %matplotlib tk
+
+# set the seed for reproducibility
+np.random.seed(1985)
 
 # set the path to the ECODSEdataset files
 path_sep = '/'
@@ -178,41 +181,61 @@ for i in range(n_species):
     
     if plot_spectra:
         # plot the mean spectra with the stdev highlighted
-        plt.figure(figsize = (4,4), dpi=150)
+        plt.figure(figsize = (3,3), dpi=200)
         plt.plot(wv, spec_mn, linewidth = 2, c = 'black')
-        plt.fill_between(wv, spec_mn-spec_sd, spec_mn+spec_sd, facecolor = sp_colors[i], alpha = 0.8)
+        #plt.plot(wv, spec_mn, linewidth = 2, alpha=0.0, c = 'white', label="n = {:d}".format(len(sp_ind[0])))
+        plt.fill_between(wv, spec_mn-spec_sd, spec_mn+spec_sd, 
+            facecolor = sp_colors[i], alpha = 0.8, label='{}'.format(sp_unique[i]))
         plt.ylim(0, 0.6)
         
-        # label the data
-        plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
-        plt.ylabel('Reflectance (%)')
-        plt.title('{}\nn = {:d}'.format(sp_unique[i], len(sp_ind[0])))
+        # hide the labels
+        axs = plt.gca()
+        axs.axes.yaxis.set_ticklabels([])
+        axs.axes.xaxis.set_ticklabels([])
+                
+                # label the data
+                #plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
+                #plt.ylabel('Reflectance (%)')
+                #plt.title('{}'.format(sp_unique[i]), style='italic')
+                #plt.title('{}\nn = {:d}'.format(sp_unique[i], len(sp_ind[0])))
+        plt.legend()
         plt.tight_layout()
         
         # save the figure for later
         path_fig = path_sep.join([path_plots, sp_unique[i]])
-        plt.savefig(path_fig + '.png', dpi = 300)
+        plt.savefig(path_fig + '-no-ticks.png', dpi = 300)
+        plt.savefig(path_fig + '-no-ticks.svg', dpi = 300)
         plt.close()
         
     if plot_all_sp:
         # create the figure params
         if i == 0:
-            plt.figure(figsize = (5, 5), dpi=150)
+            plt.figure(figsize = (3, 3), dpi=200)
         
         # plot the mean of each species in different colors
         plt.plot(wv, spec_mn, linewidth=1.5, c=sp_colors[i], alpha=0.9, label=sp_unique[i])
         
 if plot_all_sp:
     # label the data
-    plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
-    plt.ylabel('Reflectance (%)')
-    plt.title('All species')
-    plt.legend()
-    plt.tight_layout()
+    plt.ylim(0,0.6)
+    #plt.xlabel('Wavelength ({}m)'.format(r"$\mu$"))
+    #plt.ylabel('Reflectance (%)')
+    #plt.title('All species')
     
+    # hide the labels
+    axs = plt.gca()
+    axs.axes.yaxis.set_ticklabels([])
+    axs.axes.xaxis.set_ticklabels([])
+    
+    plt.text(0.95, 0.9, 'All species', horizontalalignment='right', transform=axs.transAxes)
+    
+    #plt.legend()
+    plt.tight_layout()
+        
     # save teh figure
-    path_fig = path_sep.join([path_plots, 'All-species-reflectance.png'])
-    plt.savefig(path_fig, dpi=300)
+    path_fig = path_sep.join([path_plots, 'All-species-reflectance'])
+    plt.savefig(path_fig+'.png', dpi=300)
+    plt.savefig(path_fig+'.svg')
     plt.close()
         
 #####
@@ -222,7 +245,8 @@ if plot_all_sp:
 #  now that the outliers have been removed
 if reduce_dims:
     n_components = 100
-    reducer = PCA(n_components = n_components, whiten = True)
+    #reducer = PCA(n_components = n_components, whiten = True)
+    reducer = PCA(whiten = True)
     transformed = reducer.fit_transform(refl[:,gb])
     
     # save the reducer to apply to data later
@@ -260,37 +284,75 @@ else:
 if verbose:
     print("[ STATUS ]: Beginning one-vs-all classification")
 
-if auto_multiclass:
-    n_per_class = 400
-    class_weight = n_species
-    tuning_y = np.zeros(n_species * n_per_class, dtype=np.uint8)
-    tuning_y_ge = np.zeros(n_species * n_per_class, dtype=np.uint8)
-    tuning_x = np.zeros((n_species * n_per_class, n_components))
-    sample_weight = np.ones(n_species * n_per_class)
-    
-    for i in range(n_species):
-        ind_class = np.where(spid == i)
-        ind_rnd = np.random.randint(0, high=ind_class[0].shape[0], size=n_per_class)
-        tuning_x[i * n_per_class:(i+1) * n_per_class] = target_data[ind_class[0][ind_rnd]]
-        tuning_y[i * n_per_class:(i+1) * n_per_class] = i
-        tuning_y_ge[i * n_per_class:(i+1) * n_per_class] = geid[ind_class[0]].min()
-    
-    scoring = 'accuracy'
-    
-    # create the train/test splits
-    xtrain, xtest, ytrain, ytest = model_selection.train_test_split(
-        tuning_x, tuning_y, test_size=0.5, stratify=tuning_y)
-    
-    # and the calibration/test results
-    xcalib, xtest, ycalib, ytest = model_selection.train_test_split(
-        xtest, ytest, test_size=0.5, stratify=ytest)
-    
-    # classify at the species level
-    if auto_species:
+#n_pcs = [5, 10, 20, 50, 100, 200, 300, 345]
+n_pcs = np.arange(10, transformed.shape[1], 10)
+#n_pcs = [100]
+n_itr = 50
+n_samples = np.arange(50, 550, 50)
+
+xval = len(n_pcs)
+#xval = len(n_samples)
+
+acc_gbc_list = np.zeros((xval, n_itr))
+acc_gvr_list = np.zeros((xval, n_itr))
+scr_gbc_list = np.zeros((xval, n_itr))
+scr_gvr_list = np.zeros((xval, n_itr))
+
+acc_rfc_list = np.zeros((xval, n_itr))
+acc_rvr_list = np.zeros((xval, n_itr))
+scr_rfc_list = np.zeros((xval, n_itr))
+scr_rvr_list = np.zeros((xval, n_itr))
+
+for k in range(xval):
+    for j in range(n_itr):
+        target_data = transformed[:,0:n_pcs[k]]
+        
+        if auto_multiclass:
+            n_per_class = 400
+            #n_per_class = n_samples[k]
+            class_weight = n_species
+            tuning_y = np.zeros(n_species * n_per_class, dtype=np.uint8)
+            tuning_y_ge = np.zeros(n_species * n_per_class, dtype=np.uint8)
+            tuning_x = np.zeros((n_species * n_per_class, target_data.shape[1]))
+            sample_weight = np.ones(n_species * n_per_class)
+            
+            for i in range(n_species):
+                ind_class = np.where(spid == i)
+                ind_rnd = np.random.randint(0, high=ind_class[0].shape[0], size=n_per_class)
+                tuning_x[i * n_per_class:(i+1) * n_per_class] = target_data[ind_class[0][ind_rnd]]
+                tuning_y[i * n_per_class:(i+1) * n_per_class] = i
+                tuning_y_ge[i * n_per_class:(i+1) * n_per_class] = geid[ind_class[0]].min()
+            
+            scoring = 'accuracy'
+            
+            # create the train/test splits
+        xtrain, xtest, ytrain, ytest = model_selection.train_test_split(
+            tuning_x, tuning_y, test_size=0.5, stratify=tuning_y)
+        
+        # and the calibration/test results
+        xcalib, xctest, ycalib, yctest = model_selection.train_test_split(
+            xtest, ytest, test_size=0.5, stratify=ytest)
+        
+        # classify at the species level
+        #if auto_species:
         # gbc first
-        model_tuning = aei.model.tune(tuning_x, tuning_y)
-        model_tuning.GradientBoostClassifier(scoring='f1_weighted')
-        gbc = ensemble.GradientBoostingClassifier(**model_tuning.best_params)
+        
+        # check model tuning
+        if tune_params:
+            model_tuning = aei.model.tune(tuning_x, tuning_y)
+            model_tuning.GradientBoostClassifier(scoring='f1_weighted')
+            params = model_tuning.best_params
+        else:
+            params = {'criterion': 'friedman_mse',
+                      'learning_rate': 0.1,
+                      'max_depth': 10,
+                      'max_features': 'sqrt',
+                      'min_impurity_split': 1e-06,
+                      'min_samples_leaf': 1,
+                      'min_samples_split': 0.1,
+                      'min_weight_fraction_leaf': 0.0,
+                      'n_estimators': 200}
+        gbc = ensemble.GradientBoostingClassifier(**params)
         
         #gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=300,
         #    learning_rate=0.01)
@@ -298,44 +360,139 @@ if auto_multiclass:
         gbc.fit(xtrain, ytrain)
         ovr_gbc = calibration.CalibratedClassifierCV(gbc, method='sigmoid', cv='prefit')
         ovr_gbc.fit(xcalib, ycalib)
-        prob_ovr = ovr_gbc.predict_proba(xtest)
-        prob_gbc = gbc.predict_proba(xtest)
-        pred_ovr = ovr_gbc.predict(xtest)
-        pred_gbc = gbc.predict(xtest)
+        prob_ovr = ovr_gbc.predict_proba(xctest)
+        prob_gbc = gbc.predict_proba(xctest)
+        pred_ovr = ovr_gbc.predict(xctest)
+        pred_gbc = gbc.predict(xctest)
         
-        score_ovr = metrics.log_loss(ytest, prob_ovr)
-        score_gbc = metrics.log_loss(ytest, prob_gbc)
-        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
-        acc_gbc = metrics.accuracy_score(ytest, pred_gbc)
+        score_ovr = metrics.log_loss(yctest, prob_ovr)
+        score_gbc = metrics.log_loss(yctest, prob_gbc)
+        acc_ovr = metrics.accuracy_score(yctest, pred_ovr)
+        acc_gbc = metrics.accuracy_score(yctest, pred_gbc)
         
-        #ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
-        #ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
-        #cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y, scoring=scoring)
-        #cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y, scoring=scoring)
-        #mean_gbc.append(cv_score_gbc_ovr.mean())
-        #mean_gbc.append(cv_score_gbc_ovo.mean())
-        #stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
-        #stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
-        
+        acc_gbc_list[k,j] = acc_gbc
+        acc_gvr_list[k,j] = acc_ovr
+        scr_gbc_list[k,j] = score_gbc
+        scr_gvr_list[k,j] = score_ovr
+                
+                #ovr_gbc = multiclass.OneVsRestClassifier(gbc, n_jobs=-2)
+                #ovo_gbc = multiclass.OneVsOneClassifier(gbc, n_jobs=-2)
+                #cv_score_gbc_ovr = model_selection.cross_val_score(ovr_gbc, tuning_x, tuning_y, scoring=scoring)
+                #cv_score_gbc_ovo = model_selection.cross_val_score(ovo_gbc, tuning_x, tuning_y, scoring=scoring)
+                #mean_gbc.append(cv_score_gbc_ovr.mean())
+                #mean_gbc.append(cv_score_gbc_ovo.mean())
+                #stdv_gbc.append(cv_score_gbc_ovr.std() * 2)
+                #stdv_gbc.append(cv_score_gbc_ovo.std() * 2)
+                
         # now, random forest
-        model_tuning.param_grid = None
-        model_tuning.RandomForestClassifier(scoring='f1_weighted')
-        rfc = ensemble.RandomForestClassifier(**model_tuning.best_params)
         #rfc = ensemble.RandomForestClassifier(max_depth=None, max_features='sqrt', n_estimators=300)
-        
+        if tune_params:
+            model_tuning.param_grid = None
+            model_tuning.RandomForestClassifier(scoring='f1_weighted')
+            model_tuning = aei.model.tune(tuning_x, tuning_y)
+            model_tuning.GradientBoostClassifier(scoring='f1_weighted')
+            params = model_tuning.best_params
+        else:
+            params = {'criterion': 'gini',
+                      'max_depth': None,
+                      'max_features': 'sqrt',
+                      'min_impurity_split': 1e-06,
+                      'min_samples_leaf': 1,
+                      'min_samples_split': 2,
+                      'min_weight_fraction_leaf': 0.0,
+                      'n_estimators': 200}
+                      
+        rfc = ensemble.RandomForestClassifier(**params)
         rfc.fit(xtrain, ytrain)
         ovr_rfc = calibration.CalibratedClassifierCV(rfc, method='sigmoid', cv='prefit')
         ovr_rfc.fit(xcalib, ycalib)
-        prob_ovr = ovr_rfc.predict_proba(xtest)
-        prob_rfc = rfc.predict_proba(xtest)
-        pred_ovr = ovr_rfc.predict(xtest)
-        pred_rfc = rfc.predict(xtest)
+        prob_ovr = ovr_rfc.predict_proba(xctest)
+        prob_rfc = rfc.predict_proba(xctest)
+        pred_ovr = ovr_rfc.predict(xctest)
+        pred_rfc = rfc.predict(xctest)
         
-        score_ovr = metrics.log_loss(ytest, prob_ovr)
-        score_rfc = metrics.log_loss(ytest, prob_rfc)
-        acc_ovr = metrics.accuracy_score(ytest, pred_ovr)
-        acc_rfc = metrics.accuracy_score(ytest, pred_rfc)
+        score_ovr = metrics.log_loss(yctest, prob_ovr)
+        score_rfc = metrics.log_loss(yctest, prob_rfc)
+        acc_ovr = metrics.accuracy_score(yctest, pred_ovr)
+        acc_rfc = metrics.accuracy_score(yctest, pred_rfc)
         
+        acc_rfc_list[k,j] = acc_rfc
+        acc_rvr_list[k,j] = acc_ovr
+        scr_rfc_list[k,j] = score_rfc
+        scr_rvr_list[k,j] = score_ovr
+
+# calculate mean and stdev for metrics
+acc_rvr_mean = np.mean(acc_rvr_list, axis=1)
+acc_rvr_stdv = np.std(acc_rvr_list, axis=1)
+acc_gvr_mean = np.mean(acc_gvr_list, axis=1)
+acc_gvr_stdv = np.std(acc_gvr_list, axis=1)
+
+scr_rvr_mean = np.mean(scr_rvr_list, axis=1)
+scr_rvr_stdv = np.std(scr_rvr_list, axis=1)
+scr_gvr_mean = np.mean(scr_gvr_list, axis=1)
+scr_gvr_stdv = np.std(scr_gvr_list, axis=1)
+
+# temp variables to store results from no outlier removal    
+acc_rfc_nr = copy.copy(acc_rfc_list)
+acc_rvr_nr = copy.copy(acc_rvr_list)
+acc_gbc_nr = copy.copy(acc_gbc_list)
+acc_gvr_nr = copy.copy(acc_gvr_list)
+
+scr_rfc_nr = copy.copy(scr_rfc_list)
+scr_rvr_nr = copy.copy(scr_rvr_list)
+scr_gbc_nr = copy.copy(scr_gbc_list)
+scr_gvr_nr = copy.copy(scr_gvr_list)
+    
+# lets plot some figs
+plt.figure(figsize=(4,4), dpi=200)
+#plt.fill_between(n_samples, acc_rvr_mean-acc_rvr_stdv, acc_rvr_mean+acc_rvr_stdv,
+plt.fill_between(n_pcs, acc_rvr_mean-acc_rvr_stdv, acc_rvr_mean+acc_rvr_stdv,
+    facecolor = 'Orange', alpha = 0.4)
+#plt.fill_between(n_samples, acc_gvr_mean-acc_gvr_stdv, acc_gvr_mean+acc_gvr_stdv,
+plt.fill_between(n_pcs, acc_gvr_mean-acc_gvr_stdv, acc_gvr_mean+acc_gvr_stdv,
+    facecolor = 'Blue', alpha = 0.4)
+plt.plot(n_pcs, acc_rvr_mean, label='RFC', c='Orange', linewidth=2, alpha=0.9)
+plt.plot(n_pcs, acc_gvr_mean, label='GBC', c='Blue', linewidth=2, alpha=0.9)
+#plt.plot(n_samples, acc_rvr_mean, label='RFC', c='Orange', linewidth=2, alpha=0.9)
+#plt.plot(n_samples, acc_gvr_mean, label='GBC', c='Blue', linewidth=2, alpha=0.9)
+plt.xlabel("Number of principal components used")
+#plt.xlabel("Number of bootstrap samples")
+plt.ylabel('Model accuracy')
+plt.legend()
+plt.tight_layout()
+plt.savefig(path_sep.join([path_plots, 'NPCs-accuracy.svg']))
+plt.savefig(path_sep.join([path_plots, 'NPCs-accuracy.png']))
+#plt.savefig(path_sep.join([path_plots, 'N-Samples-accuracy.svg']))
+#plt.savefig(path_sep.join([path_plots, 'N-Samples-accuracy.png']))
+plt.close()
+
+plt.figure(figsize=(4,4), dpi=200)
+#plt.fill_between(n_samples, scr_rvr_mean-scr_rvr_stdv, scr_rvr_mean+scr_rvr_stdv, 
+plt.fill_between(n_pcs, scr_rvr_mean-scr_rvr_stdv, scr_rvr_mean+scr_rvr_stdv, 
+    facecolor = 'Orange', alpha = 0.4)
+#plt.fill_between(n_samples, scr_gvr_mean-scr_gvr_stdv, scr_gvr_mean+scr_gvr_stdv, 
+plt.fill_between(n_pcs, scr_gvr_mean-scr_gvr_stdv, scr_gvr_mean+scr_gvr_stdv, 
+    facecolor = 'Blue', alpha = 0.4)
+plt.plot(n_pcs, scr_rvr_mean, label='RFC', c='Orange', linewidth=2, alpha=0.9)
+plt.plot(n_pcs, scr_gvr_mean, label='GBC', c='Blue', linewidth=2, alpha=0.9)
+#plt.plot(n_samples, scr_rvr_mean, label='RFC', c='Orange', linewidth=2, alpha=0.9)
+#plt.plot(n_samples, scr_gvr_mean, label='GBC', c='Blue', linewidth=2, alpha=0.9)
+plt.xlabel("Number of principal components used")
+#plt.xlabel("Number of bootstrap samples")
+plt.ylabel('Log loss')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.savefig(path_sep.join([path_plots, 'NPCs-loss.svg']))
+plt.savefig(path_sep.join([path_plots, 'NPCs-loss.png']))
+#plt.savefig(path_sep.join([path_plots, 'N-Samples-loss.svg']))
+#plt.savefig(path_sep.join([path_plots, 'N-Samples-loss.png']))
+plt.close()
+
+# plot feature importance
+plt.figure(figsize=(4,4), dpi=200)
+plt.plot(rfc.feature_importances_, c='Orange', label='RFC', linewidth=2, alpha=0.9)
+plt.ylabel('RFC feature importance score')
+plt.xlabel('Principal component')
         #ovr_rfc = multiclass.OneVsRestClassifier(rfc, n_jobs=-2)
         #ovo_rfc = multiclass.OneVsOneClassifier(rfc, n_jobs=-2)
         #cv_score_rfc_ovr = model_selection.cross_val_score(ovr_rfc, tuning_x, tuning_y, scoring=scoring)
@@ -346,24 +503,33 @@ if auto_multiclass:
         #stdv_rfc.append(cv_score_rfc_ovo.std() * 2)
         
         # fit the final models
-        ovr_gbc.fit(tuning_x, tuning_y)
+        ovr_gbc.fit(xtest, ytest)
+        #ovr_gbc.fit(tuning_x, tuning_y)
         #ovo_gbc.fit(tuning_x, tuning_y)
-        ovr_rfc.fit(tuning_x, tuning_y)
+        ovr_rfc.fit(xtest, ytest)
+        #ovr_rfc.fit(tuning_x, tuning_y)
         #ovo_rfc.fit(tuning_x, tuning_y)
         
         # then, save 'em
-        gbc_file = path_sep.join([path_ova, 'Multiclass-GBC.pickle'])
-        with open(gbc_file, 'wb') as f:
-            pickle.dump(ovr_gbc, f)
-            
-        #gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC.pickle'])
-        #with open(gbc_file, 'wb') as f:
-        #    pickle.dump(ovo_gbc, f)
-           
-        rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
-        with open(rfc_file, 'wb') as f:
-            pickle.dump(ovr_rfc, f)
-            
+gbc_file = path_sep.join([path_ova, 'Multiclass-GBC.pickle'])
+with open(gbc_file, 'wb') as f:
+    pickle.dump(ovr_gbc, f)
+    
+with open(gbc_file, 'r') as f:
+    ovr_gbc = pickle.load(f)
+    
+#gbc_file = path_sep.join([path_ovo, 'Multiclass-GBC.pickle'])
+#with open(gbc_file, 'wb') as f:
+#    pickle.dump(ovo_gbc, f)
+   
+rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
+with open(rfc_file, 'wb') as f:
+    pickle.dump(ovr_rfc, f)
+    
+rfc_file = path_sep.join([path_ova, 'Multiclass-RFC.pickle'])
+with open(rfc_file, 'r') as f:
+    ovr_rfc = pickle.load(f)
+    
         #rfc_file = path_sep.join([path_ovo, 'Multiclass-RFC.pickle'])
         #with open(rfc_file, 'wb') as f:
         #    pickle.dump(ovo_rfc, f)
