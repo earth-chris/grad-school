@@ -44,6 +44,7 @@ def label_color(row, colorby, unique_vals, colors):
 #####
 # read the input data
 class_test = pd.read_csv(path_class_test)
+class_train = pd.read_csv(path_class_train)
 
 # set the color scheme
 n_species = len(class_test)
@@ -66,6 +67,7 @@ plt.bar(ind + width/2 + width, class_test[metrics[3]], width, color=met_cols[3],
 # set the labels
 plt.xticks(ind, class_test['Species'], rotation='vertical')
 plt.ylabel('Score')
+plt.title('Model performance on testing data')
 plt.tight_layout()
 
 # custom build the legend
@@ -77,12 +79,42 @@ plt.tight_layout()
 #for i in range(len(legend)):
 #    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
     
-plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.6),
+plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.65),
     markerscale = 1.5)
     
 # save the figure
 plt.savefig(path_plots + '/all-metrics-test.svg')
 plt.savefig(path_plots + '/all-metrics-test.png')
+plt.savefig(path_plots + '/all-metrics-test.pdf')
+plt.close()
+
+# do the same for the training data
+plt.figure(figsize=(8,4), dpi=200)
+width = 0.225
+ind = np.arange(n_species)
+
+plt.bar(ind - width/2 - width, class_train[metrics[0]], width, color=met_cols[0], alpha=0.9, edgecolor='black', 
+    label='{}'.format(metrics[0], style='italics'))
+plt.bar(ind - width/2, class_train[metrics[1]], width, color=met_cols[1], alpha=0.9, edgecolor='black', 
+    label='{}'.format(metrics[1], style='italics'))
+plt.bar(ind + width/2, class_train[metrics[2]], width, color=met_cols[2], alpha=0.9, edgecolor='black', 
+    label='{}'.format(metrics[2], style='italics'))
+plt.bar(ind + width/2 + width, class_train[metrics[3]], width, color=met_cols[3], alpha=0.9, edgecolor='black', 
+    label='{}'.format(metrics[3], style='italics'))
+#plt.bar(ind + width/2, class_test['Specificity'], width, color=sp_colors, alpha=0.5, edgecolor='black')
+
+# set the labels
+plt.xticks(ind, class_test['Species'], rotation='vertical')
+plt.ylabel('Score')
+plt.title('Model performance on training data')
+plt.tight_layout()
+plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.65),
+    markerscale = 1.5)
+    
+# save the figure
+plt.savefig(path_plots + '/all-metrics-train.svg')
+plt.savefig(path_plots + '/all-metrics-train.png')
+plt.savefig(path_plots + '/all-metrics-train.pdf')
 plt.close()
 
 # do it again, individual plots per metric
@@ -132,4 +164,53 @@ plt.title(metrics[3])
 plt.tight_layout()
 plt.savefig(path_plots + '/{}-test.svg'.format(metrics[3]))
 plt.savefig(path_plots + '/{}-test.png'.format(metrics[3]))
+plt.close()
+
+# and duplicate for the training data
+plt.figure(figsize=(4,4), dpi=200)
+width = 0.85
+ind = np.arange(n_species)
+plt.bar(ind, class_train[metrics[0]], width, color=sp_colors, alpha=0.9, edgecolor='black', label=metrics[0])
+plt.xticks(ind, class_train['Species'], rotation='vertical')
+plt.ylabel('Score')
+plt.title(metrics[0])
+plt.tight_layout()
+plt.savefig(path_plots + '/{}-train.svg'.format(metrics[0]))
+plt.savefig(path_plots + '/{}-train.png'.format(metrics[0]))
+plt.close()
+
+plt.figure(figsize=(4,4), dpi=200)
+width = 0.85
+ind = np.arange(n_species)
+plt.bar(ind, class_train[metrics[1]], width, color=sp_colors, alpha=0.9, edgecolor='black', label=metrics[1])
+plt.xticks(ind, class_train['Species'], rotation='vertical')
+plt.ylabel('Score')
+plt.title(metrics[1])
+plt.tight_layout()
+plt.savefig(path_plots + '/{}-train.svg'.format(metrics[1]))
+plt.savefig(path_plots + '/{}-train.png'.format(metrics[1]))
+plt.close()
+
+plt.figure(figsize=(4,4), dpi=200)
+width = 0.85
+ind = np.arange(n_species)
+plt.bar(ind, class_train[metrics[2]], width, color=sp_colors, alpha=0.9, edgecolor='black', label=metrics[2])
+plt.xticks(ind, class_train['Species'], rotation='vertical')
+plt.ylabel('Score')
+plt.title(metrics[2])
+plt.tight_layout()
+plt.savefig(path_plots + '/{}-train.svg'.format(metrics[2]))
+plt.savefig(path_plots + '/{}-train.png'.format(metrics[2]))
+plt.close()
+
+plt.figure(figsize=(4,4), dpi=200)
+width = 0.85
+ind = np.arange(n_species)
+plt.bar(ind, class_train[metrics[3]], width, color=sp_colors, alpha=0.9, edgecolor='black', label=metrics[3])
+plt.xticks(ind, class_train['Species'], rotation='vertical')
+plt.ylabel('Score')
+plt.title(metrics[3])
+plt.tight_layout()
+plt.savefig(path_plots + '/{}-train.svg'.format(metrics[3]))
+plt.savefig(path_plots + '/{}-train.png'.format(metrics[3]))
 plt.close()
