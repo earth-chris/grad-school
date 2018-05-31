@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-from adjustText import adjust_text
+#from adjustText import adjust_text
 from matplotlib import lines
 from matplotlib import rc
 from matplotlib import colors as cols
@@ -26,17 +26,18 @@ def label_color(row, colorby, unique_vals, colors):
     return colors[ind]
     
 # set path to the input csv
-input_file = aei.params.environ['AEI_GS'] + '/data/EBV-Satellite-scales.csv'
+#input_file = aei.params.environ['AEI_GS'] + '/data/EBV-Satellite-scales.csv'
+input_file = '/home/cba/src/aei-grad-school/data/EBV-Satellite-scales.csv'
 
 # read the file using pandas
 df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
 xdata = 'Plot revisit time'
-xlabel = "low  --------------->  high\nFrequency (days between revisit)"
+xlabel = "low  --------------->  high\nTemporal grain size (days between revisit)"
 ydata = 'Plot resolution'
-ylabel = "Grain (m)\ncoarse  --------------->  fine"
-title = "Spatiotemporal scales of\nbiodiversity measurements from Earth observations"
+ylabel = "Spatial grain size (m)\ncoarse  --------------->  fine"
+title = "Spatiotemporal scales of biodiversity\nmeasurements from Earth observations"
 
 # set variable to color by
 colorby = 'EBV Class'
@@ -167,11 +168,12 @@ fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.tif',
-    dpi=600/scaler)
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.png',
-dpi=600/scaler)
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.tif',
+    dpi=600)
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.png',
+dpi=600)
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.pdf')
     
 plt.close()
 
@@ -315,8 +317,9 @@ fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.tif',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.tif',
     dpi=600/scaler)
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.png',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.png',
 dpi=600/scaler)
-plt.savefig('/home/cba/cba/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.pdf')

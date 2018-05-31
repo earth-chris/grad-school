@@ -3,7 +3,7 @@
 #####
 
 # package imports
-import aei
+#import aei
 import copy
 #import plotly
 import pickle
@@ -42,7 +42,7 @@ path_ovo = path_sep.join([path_outputs, 'one_vs_one'])
 # set various options for saving / printing outputs
 verbose = True
 remove_outliers = True
-plot_spectra = True
+plot_spectra = False
 plot_all_sp = False
 plot_ova_cv = True
 plot_ovo_cv = True
@@ -120,7 +120,19 @@ gb = bands == 0
 bb = bands == 1
 
 # save the best bands to use
-
+import ccbid
+from sklearn import metrics
+from sklearn import model_selection
+crid, spid, spnm = ccbid.read.species_id('support_files/species_id.csv')
+training_id, features = ccbid.read.training_data('support_files/training.csv')
+ul, uc, cl = ccbid.match_species_ids(training_id, crid, spid)
+wv, gb = ccbid.read.bands('support_files/neon-bands.csv')
+mask = ccbid.identify_outliers.with_pca(features[:, gb])
+rsx, rsy = ccbid.resample.uniform(features[mask], cl[mask])
+xtrain, xtest, ytrain, ytest = model_selection.train_test_split(rsx, rsy, test_size=0.5, stratify=rsy)
+m = ccbid.model()
+m.fit(xtrain, ytrain)
+y_pred = m.predict(xtest)
 #####
 # 2. Data preprocessing
 
@@ -245,8 +257,8 @@ if plot_all_sp:
 #  now that the outliers have been removed
 if reduce_dims:
     n_components = 100
-    #reducer = PCA(n_components = n_components, whiten = True)
-    reducer = PCA(whiten = True)
+    reducer = PCA(n_components = n_components, whiten = True)
+    #reducer = PCA(whiten = True)
     transformed = reducer.fit_transform(refl[:,gb])
     
     # save the reducer to apply to data later
@@ -285,9 +297,10 @@ if verbose:
     print("[ STATUS ]: Beginning one-vs-all classification")
 
 #n_pcs = [5, 10, 20, 50, 100, 200, 300, 345]
-n_pcs = np.arange(10, transformed.shape[1], 10)
-#n_pcs = [100]
-n_itr = 50
+#n_pcs = np.arange(10, transformed.shape[1], 10)
+n_pcs = [100]
+#n_itr = 50
+n_itr = 1
 n_samples = np.arange(50, 550, 50)
 
 xval = len(n_pcs)
@@ -343,15 +356,15 @@ for k in range(xval):
             model_tuning.GradientBoostClassifier(scoring='f1_weighted')
             params = model_tuning.best_params
         else:
-            params = {'criterion': 'friedman_mse',
-                      'learning_rate': 0.1,
-                      'max_depth': 10,
-                      'max_features': 'sqrt',
-                      'min_impurity_split': 1e-06,
-                      'min_samples_leaf': 1,
-                      'min_samples_split': 0.1,
-                      'min_weight_fraction_leaf': 0.0,
-                      'n_estimators': 200}
+params = {'criterion': 'friedman_mse',
+          'learning_rate': 0.1,
+          'max_depth': 10,
+          'max_features': 'sqrt',
+          'min_impurity_split': 1e-06,
+          'min_samples_leaf': 1,
+          'min_samples_split': 0.1,
+          'min_weight_fraction_leaf': 0.0,
+          'n_estimators': 200}
         gbc = ensemble.GradientBoostingClassifier(**params)
         
         #gbc = ensemble.GradientBoostingClassifier(max_depth=None, max_features='sqrt', n_estimators=300,
@@ -393,14 +406,14 @@ for k in range(xval):
             model_tuning.GradientBoostClassifier(scoring='f1_weighted')
             params = model_tuning.best_params
         else:
-            params = {'criterion': 'gini',
-                      'max_depth': None,
-                      'max_features': 'sqrt',
-                      'min_impurity_split': 1e-06,
-                      'min_samples_leaf': 1,
-                      'min_samples_split': 2,
-                      'min_weight_fraction_leaf': 0.0,
-                      'n_estimators': 200}
+params = {'criterion': 'gini',
+          'max_depth': None,
+          'max_features': 'sqrt',
+          'min_impurity_split': 1e-06,
+          'min_samples_leaf': 1,
+          'min_samples_split': 2,
+          'min_weight_fraction_leaf': 0.0,
+          'n_estimators': 200}
                       
         rfc = ensemble.RandomForestClassifier(**params)
         rfc.fit(xtrain, ytrain)

@@ -54,8 +54,8 @@ met_cols = [met_colors[2], met_colors[5], met_colors[3], met_colors[1]]
 metrics = ['Accuracy', 'Specificity', 'Precision', 'Recall']
 
 # plot a stacked bar chart of accuracy and specificity
-plt.figure(figsize=(8,4), dpi=200)
-width = 0.225
+plt.figure(figsize=(8,5), dpi=200)
+width = 0.2
 ind = np.arange(n_species)
 
 plt.bar(ind - width/2 - width, class_test[metrics[0]], width, color=met_cols[0], alpha=0.9, edgecolor='black', label=metrics[0])
@@ -65,7 +65,7 @@ plt.bar(ind + width/2 + width, class_test[metrics[3]], width, color=met_cols[3],
 #plt.bar(ind + width/2, class_test['Specificity'], width, color=sp_colors, alpha=0.5, edgecolor='black')
 
 # set the labels
-plt.xticks(ind, class_test['Species'], rotation='vertical')
+plt.xticks(ind, class_test['Species'], rotation='vertical')#, fontstyle='italic')
 plt.ylabel('Score')
 plt.title('Model performance on testing data')
 plt.tight_layout()
@@ -79,18 +79,18 @@ plt.tight_layout()
 #for i in range(len(legend)):
 #    proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
     
-plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.65),
+plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.45), 
     markerscale = 1.5)
-    
+    #-0.65
 # save the figure
-plt.savefig(path_plots + '/all-metrics-test.svg')
-plt.savefig(path_plots + '/all-metrics-test.png')
-plt.savefig(path_plots + '/all-metrics-test.pdf')
+plt.savefig(path_plots + '/all-metrics-test-bin-no-ital.svg')
+plt.savefig(path_plots + '/all-metrics-test-bin.png')
+plt.savefig(path_plots + '/all-metrics-test-bin.pdf')
 plt.close()
 
 # do the same for the training data
 plt.figure(figsize=(8,4), dpi=200)
-width = 0.225
+width = 0.22
 ind = np.arange(n_species)
 
 plt.bar(ind - width/2 - width, class_train[metrics[0]], width, color=met_cols[0], alpha=0.9, edgecolor='black', 

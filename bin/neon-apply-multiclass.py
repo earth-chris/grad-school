@@ -5,7 +5,7 @@
 # package imports
 import aei
 import copy
-import plotly
+#import plotly
 import pickle
 import numpy as np
 import pandas as pd
@@ -16,6 +16,9 @@ from sklearn import preprocessing
 from sklearn import model_selection
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
+
+# set the seed
+np.random.seed(1985)
 
 # set the path to the ECODSEdataset files
 path_sep = '/'
@@ -34,7 +37,7 @@ path_scratch = path_sep.join([path_base, 'scratch'])
 path_outputs = path_sep.join([path_base, 'outputs'])
 path_ova = path_sep.join([path_outputs, 'one_vs_all'])
 path_ovo = path_sep.join([path_outputs, 'one_vs_one'])
-pred_spp = path_sep.join([path_outputs, 'species_id_subm.csv'])
+pred_spp = path_sep.join([path_outputs, 'species_id_subm_new.csv'])
 pred_gen = path_sep.join([path_outputs, 'genus_id_subm.csv'])
 
 # load the final models
@@ -91,10 +94,10 @@ with open(reducer_file, 'r') as f:
 
 # set various options for saving / printing outputs
 verbose = True
-remove_outliers = True
-plot_hist = True
+remove_outliers = False
+plot_hist = False
 plot_ova_cv = False
-plot_ovo_cv = True
+plot_ovo_cv = False
 reduce_dims = True
 tune_params = False
 tune_ovo = False
@@ -153,16 +156,16 @@ if use_transformed:
 #####
 
 # predict for the gbc and rfc models
-pred_gbc = gbc.predict(transformed)
-pred_rfc = rfc.predict(transformed)
+pred_gbc = ovr_gbc.predict(transformed)
+pred_rfc = ovr_rfc.predict(transformed)
 
 # and for genus-level
 pred_gbc_ge = gbc_ge.predict(transformed)
 pred_rfc_ge = rfc_ge.predict(transformed)
 
 # get the probabilities for each prediction
-prob_gbc = gbc.predict_proba(transformed)
-prob_rfc = rfc.predict_proba(transformed)
+prob_gbc = ovr_gbc.predict_proba(transformed)
+prob_rfc = ovr_rfc.predict_proba(transformed)
 
 # and for genus-level
 prob_gbc_ge = gbc_ge.predict_proba(transformed)
@@ -176,8 +179,8 @@ plt.hist(pred_rfc, bins=xbins -0.5, color = color_options['RFC'],
     edgecolor='black', linewidth=1, orientation='horizontal', alpha=0.5, label='RFC')
 plt.yticks(xbins, sp_unique)#, rotation = 'vertical')
 plt.xlabel('Count')
-plt.ylabel('Species')
-plt.title('Number of pixels identified per species')
+#plt.ylabel('Species')
+plt.title('Number of samples identified per species')
 plt.legend()
 plt.tight_layout()
 path_count = path_sep.join([path_plots, 'One-vs-one species counts.png'])
