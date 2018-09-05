@@ -38,16 +38,21 @@ xlabel = "low  --------------->  high\nTemporal grain size (days between revisit
 ydata = 'Plot resolution'
 ylabel = "Spatial grain size (m)\ncoarse  --------------->  fine"
 title = "Spatiotemporal scales of biodiversity\nmeasurements from Earth observations"
+#title = "Spatiotemporal scales of Earth observations sensors for biodiversity monitoring"
 
 # set variable to color by
-colorby = 'EBV Class'
+colorby = 'EBV'
 unique = list(df[colorby].unique())
 unique.sort()
 ncolors = len(unique)
-#colors = aei.color.color_blind(ncolors)
+colors = aei.color.color_blind(ncolors)
 #colors = aei.color.color_blind()
-colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
-    n = ncolors).palette
+#colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
+#    n = ncolors).palette
+    
+# resort all this shit to a specific order
+#unique = [unique[4], unique[3], unique[0], unique[1], unique[2]]
+#colors = [colors[4], colors[3], colors[0], colors[1], colors[2]]
 
 #color_map = cm.Dark2
 #for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
@@ -129,23 +134,31 @@ for i in range(len(df)):
 
 # custom build the legend
 legend = list(unique)
+legend.append('')
 legend.append(marker_titles[1])
 legend.append(marker_titles[0])
-legend.append('')
 legend.append('{style}'.format(style=styles_titles[0]))
 legend.append('$\it{style}$'.format(style=styles_titles[1]))
+#legend.append('')
+#legend.append('')
 legend_colors = list(colors)
+legend_colors.append((0,0,0))
 legend_colors.append((1,1,1))
 legend_colors.append((1,1,1))
 legend_colors.append((0,0,0))
 legend_colors.append((0,0,0))
-legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
+#legend_colors.append((0,0,0))
 legend_marker = list(np.repeat(markers[0], ncolors))
+legend_marker.append('')
 legend_marker.append(markers[1])
 legend_marker.append(markers[0])
 legend_marker.append('')
 legend_marker.append('')
-legend_marker.append('')
+#legend_marker.append('')
+#legend_marker.append('')
+#legend_marker.append('')
 #legend_linestyle = list(np.repeat(linestyle[0], ncolors))
 #legend_linestyle.append(linestyle[0])
 #legend_linestyle.append(linestyle[1])
@@ -168,12 +181,12 @@ fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.tif',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.tif',
     dpi=600)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.png',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.png',
 dpi=600)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.svg')
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-group-hr-access.pdf')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.pdf')
     
 plt.close()
 
@@ -185,30 +198,37 @@ plt.close()
 # bar plot of timeline for missions
 
 # set labels and data to plot
-xlabel = "Years of Operation"
 ydata = 'Launch Year'
 wdata = 'Decomission Year'
-ylabel = "Earth Observation Mission"
+xlabel = "Years of operation"
+ylabel = "Earth observation mission"
 ytlabel = 'Sensor Name'
-title = 'Timeline of Earth observations of biodiversity'
+title = 'Timeline of Earth observations for biodiversity monitoring'
 
 # set variable to color by
-colorby = 'EBV Class'
+colorby = 'Coverage'
 unique = list(df[colorby].unique())
 unique.sort()
 ncolors = len(unique)
-#colors = aei.color.color_blind(ncolors)
+colors = aei.color.color_blind(ncolors)
 #colors = aei.color.color_blind()
+
+          
+#cm = plt.get_cmap('Vega20_r')
+#colors = []
+#step = 1./ncolors
+#for i in np.arange(0,1,step):
+#    colors.append(cm(i+.001))
     
 #distinct colors
-colors = aei.objects.color(palette = ['#e6194b', '#C05354', '#C28053', '#A89846', '#FEF866',
-    '#98E55A', '#6CE4B3', '#69C6E2', '#71B4FF', '#617BE3',
-    '#8F5EFF', '#F95FF6', '#A54396', '#F86791'], 
-    n = ncolors).palette
+#colors = aei.objects.color(palette = ['#e6194b', '#C05354', '#C28053', '#A89846', '#FEF866',
+#    '#98E55A', '#6CE4B3', '#69C6E2', '#71B4FF', '#617BE3',
+#    '#8F5EFF', '#F95FF6', '#A54396', '#F86791'], 
+#    n = ncolors).palette
     
 #colors = aei.color.color_blind()
-colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
-    n = ncolors).palette
+#colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
+#    n = ncolors).palette
 
 # sort the data frame by start year
 #df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
@@ -280,6 +300,10 @@ plt.ylim(max(y)+1, min(y)-1)
 plt.xlabel(xlabel)
 plt.title(title)
 
+# resort all this shit to a specific order
+#unique = [unique[4], unique[3], unique[0], unique[1], unique[2]]
+#colors = [colors[4], colors[3], colors[0], colors[1], colors[2]]
+
 # custom build the legend
 legend = list(unique)
 legend.append('{style}'.format(style=styles_titles[0]))
@@ -317,9 +341,9 @@ fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.tif',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.tif',
     dpi=600/scaler)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.png',
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.png',
 dpi=600/scaler)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.svg')
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-sensor.pdf')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.svg')
+plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.pdf')

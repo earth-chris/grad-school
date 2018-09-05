@@ -22,6 +22,7 @@ path_sep = '/'
 path_base = '/home/cba/Downloads/ECODSEdataset'
 path_class_test = path_sep.join([path_base, 'class-metrics-testing.csv'])
 path_class_train = path_sep.join([path_base, 'class-metrics-training.csv'])
+path_class_prob = path_sep.join([path_base, 'class-metrics-testing-prop.csv'])
 
 # set paths to new output files
 path_plots = path_sep.join([path_base, 'plots'])
@@ -45,6 +46,7 @@ def label_color(row, colorby, unique_vals, colors):
 # read the input data
 class_test = pd.read_csv(path_class_test)
 class_train = pd.read_csv(path_class_train)
+class_prob = pd.read_csv(path_class_prob)
 
 # set the color scheme
 n_species = len(class_test)
@@ -65,7 +67,7 @@ plt.bar(ind + width/2 + width, class_test[metrics[3]], width, color=met_cols[3],
 #plt.bar(ind + width/2, class_test['Specificity'], width, color=sp_colors, alpha=0.5, edgecolor='black')
 
 # set the labels
-plt.xticks(ind, class_test['Species'], rotation='vertical')#, fontstyle='italic')
+plt.xticks(ind, class_test['Species'], rotation='vertical', fontstyle='italic')
 plt.ylabel('Score')
 plt.title('Model performance on testing data')
 plt.tight_layout()
@@ -89,7 +91,7 @@ plt.savefig(path_plots + '/all-metrics-test-bin.pdf')
 plt.close()
 
 # do the same for the training data
-plt.figure(figsize=(8,4), dpi=200)
+plt.figure(figsize=(8,5), dpi=200)
 width = 0.22
 ind = np.arange(n_species)
 
@@ -104,17 +106,44 @@ plt.bar(ind + width/2 + width, class_train[metrics[3]], width, color=met_cols[3]
 #plt.bar(ind + width/2, class_test['Specificity'], width, color=sp_colors, alpha=0.5, edgecolor='black')
 
 # set the labels
-plt.xticks(ind, class_test['Species'], rotation='vertical')
+plt.xticks(ind, class_test['Species'], rotation='vertical', fontstyle='italic')
 plt.ylabel('Score')
 plt.title('Model performance on training data')
 plt.tight_layout()
-plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.65),
+plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.45),
     markerscale = 1.5)
     
 # save the figure
 plt.savefig(path_plots + '/all-metrics-train.svg')
 plt.savefig(path_plots + '/all-metrics-train.png')
 plt.savefig(path_plots + '/all-metrics-train.pdf')
+plt.close()
+
+
+# finally, for probability samples
+plt.figure(figsize=(8,5), dpi=200)
+width = 0.2
+ind = np.arange(n_species)
+
+plt.bar(ind - width/2 - width, class_prob[metrics[0]], width, color=met_cols[0], alpha=0.9, edgecolor='black', label=metrics[0])
+plt.bar(ind - width/2, class_prob[metrics[1]], width, color=met_cols[1], alpha=0.9, edgecolor='black', label=metrics[1])
+plt.bar(ind + width/2, class_prob[metrics[2]], width, color=met_cols[2], alpha=0.9, edgecolor='black', label=metrics[2])
+plt.bar(ind + width/2 + width, class_prob[metrics[3]], width, color=met_cols[3], alpha=0.9, edgecolor='black', label=metrics[3])
+#plt.bar(ind + width/2, class_test['Specificity'], width, color=sp_colors, alpha=0.5, edgecolor='black')
+
+# set the labels
+plt.xticks(ind, class_prob['Species'], rotation='vertical', fontstyle='italic')
+plt.ylabel('Score')
+plt.title('Model performance on test data using sample probabilities')
+plt.tight_layout()
+
+plt.legend(ncol = 2, loc='upper center', bbox_to_anchor=(0.45, -0.45), 
+    markerscale = 1.5)
+    #-0.65
+# save the figure
+plt.savefig(path_plots + '/all-metrics-test-prob.svg')
+plt.savefig(path_plots + '/all-metrics-test-prob.png')
+plt.savefig(path_plots + '/all-metrics-test-prob.pdf')
 plt.close()
 
 # do it again, individual plots per metric
