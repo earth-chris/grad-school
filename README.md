@@ -1,10 +1,10 @@
-# aei-grad-school
-Repo for Stanford University work
+# grad-school
+Personal repository for miscellaneous Stanford University work.
 
 Contact info:
 
 - Christopher B. Anderson
 - Center for Conservation Biology
-- cbanders@stanford.edu
-- @hypersketch
+- [E-mail](mailto:cbanders@stanford.edu)
+- [Twitter](https://twitter.com/earth_chris)
 - [Google Scholar](https://scholar.google.com/citations?user=LoGxS40AAAAJ&hl=en)
