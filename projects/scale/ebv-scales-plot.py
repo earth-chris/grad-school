@@ -206,13 +206,13 @@ plt.close()
 # set labels and data to plot
 ydata = 'Launch Year'
 wdata = 'Decomission Year'
-xlabel = "Years of operation"
+xlabel = "Years in operation"
 ylabel = "Earth observation mission"
 ytlabel = 'Sensor Name'
-title = 'Timeline of Earth observations for biodiversity monitoring'
+title = 'Timeline of Satellite Earth observations for Biodiversity Monitoring'
 
 # set variable to color by
-colorby = 'Coverage'
+colorby = 'EBV Class'
 unique = list(df[colorby].unique())
 unique.sort()
 ncolors = len(unique)
@@ -233,8 +233,8 @@ colors = et.color.color_blind(ncolors)
 #    n = ncolors).palette
 
 #colors = et.color.color_blind()
-#colors = et.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'],
-#    n = ncolors).palette
+colors = et.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'],
+    n = ncolors).palette
 
 # sort the data frame by start year
 #df_sorted = df.sort_values(by = ['EBV Class', 'Launch Year'], ascending = [0,1]).reset_index(drop = True)
@@ -303,8 +303,8 @@ plt.yticks(y, ytick_labels)
 plt.xlim(min_year, max_year)
 plt.ylim(max(y)+1, min(y)-1)
 #plt.ylabel(ylabel)
-plt.xlabel(xlabel)
-plt.title(title)
+plt.xlabel(xlabel, fontsize=16)
+plt.title(title, fontsize=18)
 
 # resort all this shit to a specific order
 #unique = [unique[4], unique[3], unique[0], unique[1], unique[2]]
@@ -340,16 +340,21 @@ ax2.tick_params(length=0)
 
 # set the figure size explicitly to fit full page width
 xwidth = 6.811 # 173 millimeters is full width limit
-ywidth = xwidth * 0.8
+ywidth = xwidth * 1#0.8
 scaler = 1.8
 fig = plt.gcf()
 fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.tif',
-    dpi=600/scaler)
-plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.png',
-dpi=600/scaler)
-plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.svg')
-plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.pdf')
+#plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.tif',
+#    dpi=600/scaler)
+#plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.png',
+#dpi=600/scaler)
+#plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.svg')
+#plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.pdf')
+
+base = "/home/cba/src/grad-school/projects/scale/figures/Figure-2"
+plt.savefig(f"{base}.png", dpi=600)
+plt.savefig(f"{base}.svg")
+plt.savefig(f"{base}.pdf")
