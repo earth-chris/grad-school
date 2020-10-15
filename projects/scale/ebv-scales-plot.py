@@ -206,10 +206,10 @@ plt.close()
 # set labels and data to plot
 ydata = 'Launch Year'
 wdata = 'Decomission Year'
-xlabel = "Years in operation"
+xlabel = "Years in Operation"
 ylabel = "Earth observation mission"
 ytlabel = 'Sensor Name'
-title = 'Timeline of Satellite Earth observations for Biodiversity Monitoring'
+title = 'Timeline of Satellite Earth Observations for Biodiversity Monitoring'
 
 # set variable to color by
 colorby = 'EBV Class'
@@ -249,7 +249,7 @@ wdata = 'Decomission Year'
 width = [i-j for i,j in zip(df_sorted[wdata], df_sorted[ydata])]
 
 # set the minimum year for the plot base
-min_year = 1970 # min(df_sorted[ydata]) - 1
+min_year = 1965 # min(df_sorted[ydata]) - 1
 max_year = 2019 # max(df_sorted[wdata]) + 1
 
 # find the y position to place a dividing line
