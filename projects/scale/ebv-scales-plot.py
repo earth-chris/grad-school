@@ -1,5 +1,5 @@
 # plots the satellite scale data
-import aei
+import earthtools as et
 import numpy as np
 import pandas as pd
 import matplotlib.cm as cm
@@ -8,6 +8,10 @@ import matplotlib.pyplot as plt
 from matplotlib import lines
 from matplotlib import rc
 from matplotlib import colors as cols
+import matplotlib as mpl
+
+# set default font size
+mpl.rcParams["font.size"] = 13
 
 # activate latex text rendering
 #rc('text', usetex=True)
@@ -24,35 +28,37 @@ def label_color(row, colorby, unique_vals, colors):
     #  associated color
     ind = unique_vals.index(row[colorby])
     return colors[ind]
-    
+
 # set path to the input csv
-#input_file = aei.params.environ['AEI_GS'] + '/data/EBV-Satellite-scales.csv'
-input_file = '/home/cba/src/aei-grad-school/data/EBV-Satellite-scales.csv'
+#input_file = et.params.environ['AEI_GS'] + '/data/EBV-Satellite-scales.csv'
+input_file = '/home/cba/src/grad-school/data/EBV-Satellite-scales.csv'
 
 # read the file using pandas
 df = pd.read_csv(input_file)
 
 # first work on a scatter plot of the points
 xdata = 'Plot revisit time'
-xlabel = "low  --------------->  high\nTemporal grain size (days between revisit)"
+#xlabel = "low  --------------->  high\nTemporal grain size (days between revisit)"
+xlabel = "Temporal grain size (days between revisit)"
 ydata = 'Plot resolution'
-ylabel = "Spatial grain size (m)\ncoarse  --------------->  fine"
-title = "Spatiotemporal scales of biodiversity\nmeasurements from Earth observations"
+#ylabel = "Spatial grain size (m)\ncoarse  --------------->  fine"
+ylabel = "Spatial grain size (m)"
+title = "Satellite measurement scales"
 #title = "Spatiotemporal scales of Earth observations sensors for biodiversity monitoring"
 
 # set variable to color by
-colorby = 'EBV'
+colorby = 'EBV Class'
 unique = list(df[colorby].unique())
 unique.sort()
 ncolors = len(unique)
-colors = aei.color.color_blind(ncolors)
-#colors = aei.color.color_blind()
-#colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
-#    n = ncolors).palette
-    
+colors = et.color.color_blind(ncolors)
+#colors = et.color.color_blind()
+colors = et.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'],
+    n = ncolors).palette
+
 # resort all this shit to a specific order
-#unique = [unique[4], unique[3], unique[0], unique[1], unique[2]]
-#colors = [colors[4], colors[3], colors[0], colors[1], colors[2]]
+unique = [unique[4], unique[3], unique[0], unique[1], unique[2]]
+colors = [colors[4], colors[3], colors[0], colors[1], colors[2]]
 
 #color_map = cm.Dark2
 #for val in np.arange(0 + 1./(ncolors+1), 1 + 1/(ncolors+1), 1./(ncolors+1)):
@@ -74,11 +80,11 @@ styles_titles = ['Open access', 'Restricted']
 df['Style'] = pd.Series(np.repeat(styles[0], dfl))
 df['Style'][df['Access'] == styles_titles[1]] = styles[1]
 
-plt.figure()
+plt.figure(figsize=(5,5), dpi=150)
 # plot by unique color scheme
 for i in range(ncolors):
     fl = df[(df[colorby] == unique[i])]
-    #plt.scatter(x = fl[xdata], y = fl[ydata], c = colors[i], 
+    #plt.scatter(x = fl[xdata], y = fl[ydata], c = colors[i],
     #    alpha = 0.9, label = unique[i], s = 175, marker = fl['Shape'],
     #    edgecolor='black', linewidth='1')
 
@@ -92,14 +98,14 @@ for i in range(ncolors):
         #    c = cols.to_hex(colors[i])
         #else:
         #    c = cols[i]
-        plt.scatter(x = fc[xdata], y = fc[ydata], c = c, 
+        plt.scatter(x = fc[xdata], y = fc[ydata], c = c,
             alpha = 0.9, label = unique[i], s = 205, marker = markers[j],
             edgecolor='black')#, linewidth='1')
-    
-# add titles/labels        
-plt.xlabel(xlabel)
-plt.ylabel(ylabel)
-plt.title(title)
+
+# add titles/labels
+plt.xlabel(xlabel, fontsize=18)
+plt.ylabel(ylabel, fontsize=18)
+plt.title(title, fontsize=20)
 #plt.legend(loc = 'lower left', ncol = 2)
 
 # handle axes
@@ -123,7 +129,7 @@ plt.yticks([1e0, 1e1, 1e2, 1e3], ['1', '10', '100', '1000'])
 # annotate each point
 annotate = 'Sensor Name'
 for i in range(len(df)):
-    ax.annotate(df[annotate][i], 
+    ax.annotate(df[annotate][i],
         #xy = (df[xdata][i], df[ydata][i]), xytext = (4, 4),
         xy = (df[xdata][i], df[ydata][i]), xytext = (df['xoff'][i]*2, df['yoff'][i]*2),
         arrowprops = dict(arrowstyle = '-', color = 'black'),
@@ -168,26 +174,26 @@ legend_marker.append('')
 proxies = []
 for i in range(len(legend)):
     proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
-    
-plt.legend(proxies, legend, loc = 'lower left', ncol = 2,
+
+plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
     markerscale = 2)
 
 # set the figure size explicitly to fit full page width
 xwidth = 6.811 # 173 millimeters is full width limit
-ywidth = xwidth * 0.75
+ywidth = xwidth *1# 0.75
 scaler = 1.5
 fig = plt.gcf()
 fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.tif',
-    dpi=600)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.png',
-dpi=600)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.svg')
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.pdf')
-    
+#plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-spatiotemporal-by-ebv-hr-access.tif',
+#    dpi=600)
+base = "/home/cba/src/grad-school/projects/scale/figures/Figure-1"
+plt.savefig(f"{base}.png", dpi=600)
+plt.savefig(f"{base}.svg")
+plt.savefig(f"{base}.pdf")
+
 plt.close()
 
 # full plot
@@ -210,24 +216,24 @@ colorby = 'Coverage'
 unique = list(df[colorby].unique())
 unique.sort()
 ncolors = len(unique)
-colors = aei.color.color_blind(ncolors)
-#colors = aei.color.color_blind()
+colors = et.color.color_blind(ncolors)
+#colors = et.color.color_blind()
 
-          
+
 #cm = plt.get_cmap('Vega20_r')
 #colors = []
 #step = 1./ncolors
 #for i in np.arange(0,1,step):
 #    colors.append(cm(i+.001))
-    
+
 #distinct colors
-#colors = aei.objects.color(palette = ['#e6194b', '#C05354', '#C28053', '#A89846', '#FEF866',
+#colors = et.objects.color(palette = ['#e6194b', '#C05354', '#C28053', '#A89846', '#FEF866',
 #    '#98E55A', '#6CE4B3', '#69C6E2', '#71B4FF', '#617BE3',
-#    '#8F5EFF', '#F95FF6', '#A54396', '#F86791'], 
+#    '#8F5EFF', '#F95FF6', '#A54396', '#F86791'],
 #    n = ncolors).palette
-    
-#colors = aei.color.color_blind()
-#colors = aei.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'], 
+
+#colors = et.color.color_blind()
+#colors = et.objects.color(palette = ['#E56C2D', '#00A583', '#F1A53A', '#0081B4', '#F5E369'],
 #    n = ncolors).palette
 
 # sort the data frame by start year
@@ -256,7 +262,7 @@ y[ysplit:] += 1
 fig, ax1 = plt.subplots()
 for i in range(ncolors):
     ind = np.where(df_sorted[colorby] == unique[i])
-    ax1.barh(np.array(y)[ind[0]], 
+    ax1.barh(np.array(y)[ind[0]],
         np.array(width)[ind[0]],
         left = df_sorted[ydata][ind[0]],
         color = colors[i],
@@ -268,7 +274,7 @@ for i in range(ncolors):
 for i in range(len(df_sorted)):
     ax1.plot((min_year, df_sorted[ydata][i]),
         (y[i], y[i]), '--', c = 'black', alpha = 0.2)
-        
+
 # add a solid line to distinguish between active and passive sensors
 ax1.plot((min_year-2, max_year+2), (ysplit, ysplit), '-', c = 'black', linewidth = 0.5)
 
@@ -281,7 +287,7 @@ for i in range(len(df_sorted)):
         ha = 'right', va = 'center',
         bbox = dict(boxstyle = 'round, pad=0.1', lw=0, fc = 'white'),
         fontstyle = df_sorted['Style'][i])
-    
+
 # set italics for ylabels
 ytick_labels = []
 for i in range(len(df_sorted)):
@@ -317,7 +323,7 @@ legend_marker.append('')
 proxies = []
 for i in range(len(legend)):
     proxies.append(create_proxy(legend_colors[i], legend_marker[i]))#, legend_linestyle[i]))
-    
+
 plt.legend(proxies, legend, loc = 'lower left', ncol = 1,
     markerscale = 2)
 #plt.legend(loc = 'lower left')
@@ -341,9 +347,9 @@ fig.set_size_inches(xwidth*scaler, ywidth*scaler, forward=True)
 plt.tight_layout()
 
 # save the output file
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.tif',
+plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.tif',
     dpi=600/scaler)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.png',
+plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.png',
 dpi=600/scaler)
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.svg')
-plt.savefig('/home/cba/src/aei-grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.pdf')
+plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.svg')
+plt.savefig('/home/cba/src/grad-school/figures/EO-Biodiv-timeline-by-group-and-coverage.pdf')
